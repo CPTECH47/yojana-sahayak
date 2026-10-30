@@ -26,8 +26,8 @@ Current owners and the eight-minute update format are in [docs/TEAM_CHECKINS.md]
 
 ## WhatsApp user journey
 
-Citizens and families can ask what a scheme offers and where to apply; farmers and students can ask scheme-specific questions; help-desk volunteers can use the cited response to guide a person to the official source. The bot does not make official eligibility decisions. The current questionnaire/recommendation logic only checks selected PM-KISAN conditions. See [the WhatsApp flow and evidence safeguards](docs/WHATSAPP_FLOW.md).
+After language selection, the WhatsApp bot asks whether the user is a farmer, student, worker, artisan, family member, or volunteer. It asks only the checked conditions needed for preliminary PM-KISAN, PMUY, or PM-SYM matching; student and artisan paths provide information without claiming eligibility. Invalid answers are requested again; users can go back, skip, or cancel. Answers remain in session memory and the bot does not request Aadhaar or bank details. It does not make official eligibility decisions. See [the WhatsApp flow and evidence safeguards](docs/WHATSAPP_FLOW.md).
 
 ## Verified versus pending
 
-The source importer, local build and selected API behavior have automated checks. Live WhatsApp text was reported and tested in the earlier prototype, but has not yet been retested from this repository with the expanded corpus. Voice input/output, Punjabi quality, Supabase scheme storage, public deployment and scheduled change monitoring remain pending. A potential match is not a government approval.
+The source importer, local build and selected API behavior have automated checks. The updated questionnaire still needs a paired-phone test; do not claim live delivery or model responses until observed. Voice input/output, Punjabi quality, Supabase scheme storage, public deployment and scheduled change monitoring remain pending. A potential match is not a government approval.

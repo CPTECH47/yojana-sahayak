@@ -53,3 +53,22 @@ test('fictional profiles produce preliminary, excluded and missing-information r
   assert.deepEqual(unknown.missing_fields, ['other_official_exclusion']);
   assert.equal(unknown.official_decision, false);
 });
+
+test('PMUY recommendation uses its reviewed questions and says it is preliminary', () => {
+  const result = createAnswerService({ passages }).recommend({
+    language: 'en', profile: { scheme_id: 'pmuy', adult_woman_18_plus: true, household_has_existing_lpg: false, can_submit_deprivation_declaration: true },
+  });
+  assert.equal(result.results[0].status, 'potential_match');
+  assert.ok(result.results[0].citations.some(source => source.document_id === 'pmuy-new-connection'));
+  assert.equal(result.results[0].official_decision, false);
+});
+
+test('PM-SYM income and exclusion checks cite the ministry note and retain unknowns', () => {
+  const result = createAnswerService({ passages }).recommend({
+    language: 'hi', profile: { scheme_id: 'pm-sym', age_18_to_40: true, monthly_income_at_most_15000: true, unorganised_worker: true, covered_by_epf_esic_nps: null, income_tax_payer: false, receives_other_government_pension: false },
+  });
+  assert.equal(result.language, 'hi');
+  assert.equal(result.results[0].status, 'needs_information');
+  assert.deepEqual(result.results[0].missing_fields, ['covered_by_epf_esic_nps']);
+  assert.ok(result.results[0].citations.some(source => source.document_id === 'pm-sym-ministry-note-2025'));
+});

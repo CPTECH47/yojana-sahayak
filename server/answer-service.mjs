@@ -86,23 +86,59 @@ export function createAnswerService({ passages, model = askModel } = {}) {
 
   function recommend({ profile, language = 'en' } = {}) {
     if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return { status: 'invalid_request', results: [], reason_code: 'invalid_profile' };
-    const land = profile.owns_cultivable_land;
-    const tax = profile.income_tax_payer_last_year;
-    const professional = profile.practising_registered_professional;
-    const other = profile.other_official_exclusion;
-    const fields = { owns_cultivable_land: land, income_tax_payer_last_year: tax, practising_registered_professional: professional, other_official_exclusion: other };
-    const missing = Object.entries(fields).filter(([, value]) => typeof value !== 'boolean').map(([key]) => key);
-    const failed = [];
-    if (land === false) failed.push('No recorded cultivable landholding was confirmed.');
-    if (tax === true) failed.push('Income tax was paid in the last assessment year.');
-    if (professional === true) failed.push('A registered professional is practising.');
-    if (other === true) failed.push('Another official exclusion applies.');
+    const lang = ['en', 'hi'].includes(language) ? language : 'en';
+    const schemeId = profile.scheme_id || 'pm-kisan';
+    const config = {
+      'pm-kisan': {
+        name: schemes['pm-kisan'].name,
+        evidence: ['pmkisan-guidelines:2', 'pmkisan-guidelines:3'],
+        fields: ['owns_cultivable_land', 'income_tax_payer_last_year', 'practising_registered_professional', 'other_official_exclusion'],
+        failures: [
+          ['owns_cultivable_land', false, 'No recorded cultivable landholding was confirmed.', 'खेती योग्य जमीन रखने की पुष्टि नहीं हुई।'],
+          ['income_tax_payer_last_year', true, 'Income tax was paid in the last assessment year.', 'पिछले आकलन वर्ष में परिवार के किसी सदस्य ने आयकर दिया।'],
+          ['practising_registered_professional', true, 'A registered professional is practising.', 'परिवार का कोई पंजीकृत पेशेवर अपना पेशा कर रहा है।'],
+          ['other_official_exclusion', true, 'Another official exclusion was reported.', 'एक अन्य आधिकारिक अपवाद लागू बताया गया।'],
+        ],
+      },
+      pmuy: {
+        name: schemes.pmuy.name,
+        evidence: ['pmuy-new-connection:1', 'pmuy-faq:1'],
+        fields: ['adult_woman_18_plus', 'household_has_existing_lpg', 'can_submit_deprivation_declaration'],
+        failures: [
+          ['adult_woman_18_plus', false, 'The applicant is not an adult woman aged 18 or older.', 'आवेदक 18 वर्ष या उससे अधिक आयु की वयस्क महिला नहीं है।'],
+          ['household_has_existing_lpg', true, 'An LPG connection already exists in the household.', 'परिवार में पहले से LPG कनेक्शन मौजूद है।'],
+          ['can_submit_deprivation_declaration', false, 'The required poor-household declaration cannot be provided.', 'ज़रूरी गरीब-परिवार घोषणा देने की पुष्टि नहीं हुई।'],
+        ],
+      },
+      'pm-sym': {
+        name: schemes['pm-sym'].name,
+        evidence: ['pm-sym-ministry-note-2025:2'],
+        fields: ['age_18_to_40', 'monthly_income_at_most_15000', 'unorganised_worker', 'covered_by_epf_esic_nps', 'income_tax_payer', 'receives_other_government_pension'],
+        failures: [
+          ['age_18_to_40', false, 'The reported age is outside the 18–40 entry range in the cited Ministry note.', 'बताई गई आयु मंत्रालय के नोट में दी गई 18–40 वर्ष की सीमा से बाहर है।'],
+          ['monthly_income_at_most_15000', false, 'The reported monthly income is above the limit in the cited Ministry note.', 'बताई गई मासिक आय मंत्रालय के नोट की सीमा से अधिक है।'],
+          ['unorganised_worker', false, 'The person did not report unorganised-sector work.', 'असंगठित क्षेत्र में काम करने की पुष्टि नहीं हुई।'],
+          ['covered_by_epf_esic_nps', true, 'Coverage under EPF, ESIC or NPS was reported.', 'EPF, ESIC या NPS में शामिल होना बताया गया।'],
+          ['income_tax_payer', true, 'Income-tax payer status was reported.', 'आयकरदाता होना बताया गया।'],
+          ['receives_other_government_pension', true, 'Another government pension was reported.', 'दूसरी सरकारी पेंशन मिलना बताया गया।'],
+        ],
+      },
+    }[schemeId];
+    if (!config) return { status: 'invalid_request', results: [], reason_code: 'unsupported_scheme' };
+    const missing = config.fields.filter(key => typeof profile[key] !== 'boolean');
+    const failed = config.failures.filter(([key, value]) => profile[key] === value).map(row => row[lang === 'hi' ? 3 : 2]);
     const status = failed.length ? 'not_matched' : missing.length ? 'needs_information' : 'potential_match';
-    const ruleEvidence = getPassages().filter(p => ['pmkisan-guidelines:2', 'pmkisan-guidelines:3'].includes(p.id)).map(citation);
+    const sourcePassages = getPassages();
+    const ruleEvidence = sourcePassages.filter(p => config.evidence.includes(p.id)).map(citation);
+    const reasons = failed.length ? failed : [status === 'needs_information'
+      ? (lang === 'hi' ? 'कुछ जवाब नहीं दिए गए; इन्हें जाने बिना शुरुआती जाँच पूरी नहीं हो सकती।' : 'Some answers are missing, so the preliminary check cannot be completed yet.')
+      : (lang === 'hi' ? 'दिए गए जवाब चुनी हुई शर्तों से मेल खाते हैं; बाकी आधिकारिक शर्तों की पुष्टि बाकी है।' : 'The supplied answers pass these selected checks; other official conditions still need verification.')];
     return {
-      status: 'ok', language: ['en', 'hi'].includes(language) ? language : 'en',
-      results: [{ scheme_id: 'pm-kisan', scheme_name: schemes['pm-kisan'].name, status, reasons: failed.length ? failed : ['Basic checked conditions pass; official land records and full guidelines still require verification.'], missing_fields: missing, citations: ruleEvidence, official_decision: false }],
-      coverage_note: 'This pilot checks selected PM-KISAN conditions only. It cannot determine official eligibility.',
+      status: 'ok', language: lang,
+      results: [{ scheme_id: schemeId, scheme_name: config.name, status, reasons, missing_fields: missing, citations: ruleEvidence, official_decision: false }],
+      coverage_note: lang === 'hi'
+        ? 'यह केवल चुनी हुई शुरुआती शर्तों की जाँच है; यह सरकारी पात्रता निर्णय नहीं है। आधिकारिक पोर्टल/कार्यालय से पुष्टि करें।'
+        : 'This checks selected preliminary conditions only; it is not an official eligibility decision. Confirm with the official portal or office.',
     };
   }
 
