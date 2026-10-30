@@ -22,6 +22,8 @@ Only interpolate fields actually returned by the validated server. Do not genera
 
 ## Checks completed
 
+- Real paired-phone check, YOJANA START: the second phone received “Yojana Sahayak pilot. Ask YOJANA PM-KISAN kitna paisa deta hai? or YOJANA NMMSS scholarship amount. YOJANA MATCH yes no no is a fictional three-check rehearsal. This is not an official eligibility decision.” The bot log also reported one reply. User feedback: the first response should greet the user and ask Hindi or English before presenting commands. This requires changing the server-owned WhatsApp handler and storing language choice per chat; the proposed bilingual copy above is ready for Charchit. No other phone cases are confirmed yet.
+
 - Reviewed captain/server-integration commit b6fa4acc0394b4a31fdcf2c4da71608d80119773: YOJANA-prefixed direct text is routed to shared chat; replies append returned citation title, locator and URL. The start text is English-only, and match remains a fictional diagnostic shortcut; language selection, guided correction, voice and persistent conversation are not implemented in the reviewed handler.
 - On that exact commit, `node --test server/answer-service.test.mjs`: 5/5 pass. These tests use a mocked model for the Hindi answer and do not prove live model or WhatsApp delivery.
 - On the UI checkout's running local API: a fictional partial profile produced needs_information and two PM-KISAN source references. An unsupported fictional question received a no-evidence answer. Ollama endpoint was unavailable and the answerable PM-KISAN request returned model_unavailable.
