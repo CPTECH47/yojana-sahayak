@@ -9,6 +9,7 @@ Status: preliminary source audit; review and integration remain pending.
 ## Changes
 
 - Added `corpus/SOURCE_REVIEW.md` with the requirements provenance, audit of three existing sources, source hashes, historical rule evidence, sample profiles and explicit uncertainty.
+- Added `corpus/PILOT_CANDIDATES.md` with PMUY FAQ and 2020 PMFBY guideline metadata, snapshot hashes, selected passages, fictional scenarios and unresolved freshness issues. They are not added to the runtime index.
 - No server contract, runtime corpus, database migration or access policy was changed. The server currently loads all passages directly; a manifest-only status change does not prevent unreviewed text from being retrieved.
 
 ## Checks
@@ -18,6 +19,7 @@ Status: preliminary source audit; review and integration remain pending.
 - Bundled Python `pypdf` read the 12-page PDF; selected page 3 text was inspected and page 2–3 evidence compared with stored passages. Replacement characters and historical cutoff language require attention.
 - Official PIB PM-KISAN release fetched successfully on 2026-10-31; its raw HTML hash differs from the existing passage's recorded snapshot hash. Source content was read, but older snapshot equivalence was not proven.
 - Official PIB NMMSS release also downloaded successfully after the initial web-reader failure; its title, ministry, date and announced deadline were checked. Its HTML hash also differs from the recorded earlier hash; full snapshot equivalence remains unverified.
+- Inspected PMUY FAQ questions 1, 2 and 6 and extracted PMFBY PDF pages 1, 13 and 15 using bundled `pypdf`; the PMFBY portal lists 2023 guidance and the PMUY site displays differing benefit amounts. Snapshot hashes and review limits are in `PILOT_CANDIDATES.md`; original candidate snapshots are only in local temporary storage.
 - PS.pdf pages 10–11 were extracted using bundled `pypdf`. The PRD, registry and team instructions were read from the older repository's `codex/yojana-sahayak-prd-20261030` branch because they are not on this repository's current data branch.
 - No app build or ingestion run was performed for this documentation-only audit; importer dependencies were not installed in this checkout.
 
