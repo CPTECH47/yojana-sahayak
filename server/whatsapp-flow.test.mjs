@@ -14,7 +14,7 @@ function fakeConversation() {
 test('START asks for language, selection shows next steps in that language, and questions use it', async () => {
   const { conversation, calls } = fakeConversation();
   const prompt = await conversation.handle('chat-a', 'start');
-  assert.match(prompt, /HINDI|ENGLISH/u);
+  assert.match(prompt, /Reply 1 for Hindi/u);
   const menu = await conversation.handle('chat-a', 'हिंदी');
   assert.match(menu, /अब मैं हिंदी में/u);
   assert.match(await conversation.handle('chat-a', 'प्रधानमंत्री किसान का लाभ?'), /hi:प्रधानमंत्री किसान/u);
@@ -24,13 +24,20 @@ test('START asks for language, selection shows next steps in that language, and 
 test('language preference is isolated per chat and can be switched', async () => {
   const { conversation, calls } = fakeConversation();
   await conversation.handle('chat-a', 'START');
-  await conversation.handle('chat-a', 'HINDI');
+  await conversation.handle('chat-a', '1');
   await conversation.handle('chat-b', 'START');
-  await conversation.handle('chat-b', 'ENGLISH');
-  await conversation.handle('chat-a', 'ENGLISH');
+  await conversation.handle('chat-b', '2');
+  await conversation.handle('chat-a', '2');
   await conversation.handle('chat-a', 'PMUY who can apply?');
   await conversation.handle('chat-b', 'PMUY who can apply?');
   assert.deepEqual(calls.map(call => call.language), ['en', 'en']);
+});
+
+test('numbered replies are simple language-selection aliases', async () => {
+  const { conversation } = fakeConversation();
+  assert.match(await conversation.handle('chat-a', 'YOJANA START'), /Reply 1 for Hindi/u);
+  assert.match(await conversation.handle('chat-a', '1'), /अब मैं हिंदी में/u);
+  assert.match(await conversation.handle('chat-b', '2'), /reply in English/u);
 });
 
 test('match instructions and cited answers follow the selected language', async () => {

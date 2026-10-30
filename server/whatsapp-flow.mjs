@@ -4,8 +4,8 @@ function normalize(text) {
 
 function requestedLanguage(text) {
   const value = normalize(text);
-  if (['hi', 'hindi', 'हिंदी', 'हिन्दी'].includes(value)) return 'hi';
-  if (['en', 'english'].includes(value)) return 'en';
+  if (['1', 'hi', 'hindi', 'हिंदी', 'हिन्दी'].includes(value)) return 'hi';
+  if (['2', 'en', 'english'].includes(value)) return 'en';
   return null;
 }
 
@@ -14,18 +14,18 @@ function isStart(text) {
 }
 
 function languagePrompt() {
-  return 'नमस्ते! Welcome to Yojana Sahayak.\nकृपया भाषा चुनें / Please choose a language:\nHINDI लिखें हिंदी के लिए, या ENGLISH लिखें अंग्रेज़ी के लिए।\nहर संदेश की शुरुआत YOJANA से करें।';
+  return 'नमस्ते! Welcome to Yojana Sahayak.\nकृपया भाषा चुनें / Please choose a language:\n1 लिखें हिंदी के लिए / Reply 1 for Hindi\n2 लिखें अंग्रेज़ी के लिए / Reply 2 for English\nहर संदेश की शुरुआत YOJANA से करें / Start every message with YOJANA.';
 }
 
 function nextSteps(language) {
   if (language === 'hi') return [
-    'ठीक है, अब मैं हिंदी में जवाब दूँगा। भाषा बदलने के लिए ENGLISH भेजें।',
+    'ठीक है, अब मैं हिंदी में जवाब दूँगा। भाषा बदलने के लिए YOJANA 2 भेजें।',
     'आप PM-KISAN, PMUY, PM Vishwakarma, PM-SYM या NMMSS के बारे में पूछ सकते हैं।',
     'उदाहरण: YOJANA PM-KISAN में कितनी राशि मिलती है?',
     'काल्पनिक PM-KISAN शुरुआती जाँच: YOJANA MATCH yes no no। यह सरकारी पात्रता निर्णय नहीं है।',
   ].join('\n');
   return [
-    'Okay, I will reply in English. Send HINDI to switch languages.',
+    'Okay, I will reply in English. Send YOJANA 1 to switch languages.',
     'Ask about PM-KISAN, PMUY, PM Vishwakarma, PM-SYM, or NMMSS.',
     'Example: YOJANA PM-KISAN kitna paisa deta hai?',
     'Fictional preliminary PM-KISAN check: YOJANA MATCH yes no no. This is not an official eligibility decision.',

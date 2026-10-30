@@ -2,7 +2,7 @@
 
 ## Change summary
 
-- Added a WhatsApp onboarding step: `YOJANA START` greets the user and asks them to choose Hindi or English.
+- Added a WhatsApp onboarding step: `YOJANA START` greets the user and offers quick text choices: `YOJANA 1` for Hindi and `YOJANA 2` for English (the language names also work).
 - Stores the language per direct-chat JID in memory for the lifetime of the running bot process. Each person can choose or switch independently. Restarting the process clears the choices.
 - Shows the next-step menu in the selected language, passes the choice into `/api/chat` answer service calls, labels citations in Hindi or English, and localizes preliminary PM-KISAN match replies.
 - Preserved the explicit `YOJANA ` prefix and added localized service-unavailable replies.
