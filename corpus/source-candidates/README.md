@@ -1,6 +1,6 @@
 # Non-farm source verification: initial snapshots
 
-Contributor: Pulkit. Accessed 2026-10-31. **Quarantined candidates: not approved for answer retrieval or eligibility decisions.** The three PDFs in this local directory were fetched from their official source URLs and hashed. Verify source reuse permissions and current operative rules before distributing or indexing the files. The Vishwakarma document contains a published account about an identifiable person; never copy it into synthetic profiles or answer passages.
+Contributor: Pulkit. Accessed 2026-10-31. **Quarantined candidates: not approved for answer retrieval or eligibility decisions.** The three PDFs were downloaded and hashed on the reviewer’s local machine; their snapshots are not included in this GitHub branch. Verify source reuse permissions and current operative rules before distributing or indexing the files. The Vishwakarma document contains a published account about an identifiable person; never copy it into synthetic profiles or answer passages.
 
 ## PM Shram Yogi Maandhan
 
