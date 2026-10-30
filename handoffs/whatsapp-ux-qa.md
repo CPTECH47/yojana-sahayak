@@ -26,6 +26,8 @@ Only interpolate fields actually returned by the validated server. Do not genera
 - On that exact commit, `node --test server/answer-service.test.mjs`: 5/5 pass. These tests use a mocked model for the Hindi answer and do not prove live model or WhatsApp delivery.
 - On the UI checkout's running local API: a fictional partial profile produced needs_information and two PM-KISAN source references. An unsupported fictional question received a no-evidence answer. Ollama endpoint was unavailable and the answerable PM-KISAN request returned model_unavailable.
 - Citation review verified the returned URL strings and page locators in the response. An attempt to open the exact PM-KISAN PDF through the web fetch returned HTTP 502; the URL must be retested on a phone and this does not establish that the document is absent. Claim-by-claim support was not checked.
+- Rechecked captain commit cbf614abdc174e396fa23e3e7d85ca9d0549dd29: the five answer-service tests pass. The corpus has 14 PM-KISAN passages and 7 NMMSS passages across three approved documents. Passage count is not document count. The NMMSS passages provide a student-question route, but the real model and WhatsApp delivery were not exercised.
+- The current team ownership note assigns demo slides to Jaanvi and independent main-journey QA to Mansi. This handoff covers Tejas's message copy and focused QA only.
 
 ## Remaining team integration checks
 
