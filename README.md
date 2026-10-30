@@ -19,6 +19,10 @@ A student prototype for source-cited government-scheme questions and preliminary
 
 To rebuild source passages, install `requirements-ingest.txt` in a Python environment and run `python scripts/ingest_sources.py`. Review new passages before using them for answers. Do not collect beneficiary identifiers or commit real conversations.
 
+## Team coordination
+
+Current owners, the eight-minute update format, and release gate are in [docs/TEAM_CHECKINS.md](docs/TEAM_CHECKINS.md).
+
 ## Verified versus pending
 
 The source importer, local build and selected API behavior have automated checks. Live WhatsApp text was reported and tested in the earlier prototype, but has not yet been retested from this new repository. Voice input/output, Punjabi quality, Supabase scheme storage, public deployment and the 10–20-document corpus remain pending. A potential match is not a government approval.
