@@ -1,41 +1,30 @@
-import React, { useState } from 'react';
-import { createRoot } from 'react-dom/client';
+import React, {useState} from 'react';
+import {createRoot} from 'react-dom/client';
 import './style.css';
 
-function App() {
-  const [state, setState] = useState({ kind: 'idle', message: '' });
-
-  async function checkConnection() {
-    setState({ kind: 'loading', message: 'Checking the server and database…' });
-    try {
-      const response = await fetch('/api/prep-status');
-      const result = await response.json();
-      setState({
-        kind: response.ok && result.ok ? 'success' : 'error',
-        message: result.message || 'No response message was returned.'
-      });
-    } catch {
-      setState({ kind: 'error', message: 'The server could not be reached.' });
-    }
-  }
-
-  return (
-    <main className="page">
-      <section className="panel" aria-labelledby="page-title">
-        <p className="kicker">Team connection rehearsal</p>
-        <h1 id="page-title">One click through the full stack.</h1>
-        <p className="intro">
-          This temporary practice screen checks React, Express, Supabase, and Render before the problem statement arrives.
-        </p>
-        <button type="button" onClick={checkConnection} disabled={state.kind === 'loading'}>
-          {state.kind === 'loading' ? 'Checking…' : 'Check Supabase connection'}
-        </button>
-        <p className={`result result--${state.kind}`} role="status" aria-live="polite">
-          {state.message || 'Ready when you are.'}
-        </p>
-      </section>
-    </main>
-  );
+const questions = [
+ ['owns_cultivable_land','Does the sample person own cultivable land?','क्या नमूना व्यक्ति के पास खेती योग्य भूमि है?'],
+ ['income_tax_payer_last_year','Did they pay income tax last year?','क्या उन्होंने पिछले वर्ष आयकर दिया था?'],
+ ['practising_registered_professional','Are they a practising registered professional?','क्या वे पंजीकृत पेशेवर के रूप में काम करते हैं?'],
+ ['other_official_exclusion','Does another official exclusion apply?','क्या कोई अन्य आधिकारिक अपवर्जन लागू होता है?']
+];
+const copy = {
+ en:{title:'Find a way forward.',intro:'Explore government schemes and check their sources.',start:'Check a sample profile',ask:'Ask a question',pilot:'Matching currently checks selected PM-KISAN conditions only. You can ask about other schemes in the available documents.',notice:'Independent student prototype. A match is not an official decision. Use fictional information only.',yes:'Yes',no:'No',skip:'Skip / unsure',back:'Back',review:'Review answers',change:'Change',see:'See possible matches',missing:'More information needed',sources:'Sources',send:'Ask',loading:'Please wait…',error:'The service could not be reached. Try again.',sample:'Sample mode',live:'Live service',switchLive:'Switch to live service',switchSample:'Switch to sample mode',placeholder:'For example: What is NMMSS?',restart:'Start again',none:'No supporting evidence is available.',demoAnswer:'Sample response: this is a demonstration, not a scheme fact.',status:{potential_match:'Possible match',needs_information:'More information needed',not_matched:'Conditions not met'}},
+ hi:{title:'योजनाओं की जानकारी, सरल भाषा में।',intro:'सरकारी योजनाएँ जानें और उनके स्रोत देखें।',start:'नमूना जानकारी से जाँचें',ask:'सवाल पूछें',pilot:'अभी मिलान केवल PM-KISAN की कुछ शर्तों के लिए है। उपलब्ध दस्तावेज़ों की अन्य योजनाओं पर सवाल पूछ सकते हैं।',notice:'स्वतंत्र छात्र प्रोटोटाइप। मिलान सरकारी निर्णय नहीं है। केवल काल्पनिक जानकारी दें।',yes:'हाँ',no:'नहीं',skip:'छोड़ें / पता नहीं',back:'वापस',review:'उत्तर देखें',change:'बदलें',see:'संभावित मिलान देखें',missing:'और जानकारी चाहिए',sources:'स्रोत',send:'पूछें',loading:'कृपया प्रतीक्षा करें…',error:'सेवा उपलब्ध नहीं है। फिर प्रयास करें।',sample:'नमूना मोड',live:'लाइव सेवा',switchLive:'लाइव सेवा चुनें',switchSample:'नमूना मोड चुनें',placeholder:'जैसे: NMMSS क्या है?',restart:'फिर शुरू करें',none:'इस उत्तर के लिए प्रमाण उपलब्ध नहीं है।',demoAnswer:'नमूना उत्तर: यह केवल प्रदर्शन है, योजना का तथ्य नहीं।',status:{potential_match:'संभावित मिलान',needs_information:'और जानकारी चाहिए',not_matched:'शर्तें पूरी नहीं हुईं'}}
+};
+function App(){
+ const [lang,L]=useState('en'),[page,P]=useState('home'),[idx,I]=useState(0),[profile,F]=useState({}),[mode,M]=useState('sample'),[results,R]=useState(null),[answer,A]=useState(null),[question,Q]=useState(''),[busy,B]=useState(false),[error,E]=useState(false);
+ const t=copy[lang];
+ function reply(value){const next={...profile}; if(value===null) delete next[questions[idx][0]]; else next[questions[idx][0]]=value; F(next); if(idx<questions.length-1)I(idx+1);else P('review')}
+ async function request(kind){B(true);E(false);try{let data;if(mode==='sample'){data=kind==='recommend'?{results:[{scheme_id:'sample',scheme_name:'Sample scheme / नमूना योजना',status:'needs_information',reasons:[],missing_fields:['Sample condition'],citations:[]}]}:{status:'insufficient_evidence',answer_text:t.demoAnswer,citations:[]}}else{const response=await fetch('/api/'+kind,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(kind==='chat'?{question,language:lang}:{profile,language:lang})});data=await response.json();if(!response.ok||['error','invalid_request'].includes(data.status))throw Error('Request failed')}if(kind==='chat')A(data);else{R(data);P('results')}}catch{E(true)}finally{B(false)}}
+ function sources(items){return <ul className="sources">{(items||[]).map((c,i)=>{let url;try{const parsed=new URL(c.url);if(['http:','https:'].includes(parsed.protocol))url=parsed.href}catch{}return <li key={c.evidence_id||i}>{url?<a href={url} target="_blank" rel="noreferrer">{c.title||c.document_id}</a>:<span>{c.title||c.document_id}</span>}<small>{[c.authority,c.locator,c.verified_at].filter(Boolean).join(' | ')}</small></li>})}</ul>}
+ return <main className="shell"><header><a className="brand" href="#home" onClick={()=>P('home')}>योजना <span>सहायक</span></a><nav aria-label="Language"><button className="link" aria-pressed={lang==='en'} onClick={()=>L('en')}>English</button><button className="link" aria-pressed={lang==='hi'} onClick={()=>L('hi')}>हिन्दी</button></nav></header>
+ <div className="mode"><strong>{mode==='sample'?t.sample:t.live}</strong><button className="link" onClick={()=>{M(mode==='sample'?'live':'sample');A(null);R(null);E(false)}}>{mode==='sample'?t.switchLive:t.switchSample}</button></div>
+ {page==='home'&&<section className="hero"><p>Yojana Sahayak</p><h1>{t.title}</h1><p className="lead">{t.intro}</p><div className="actions"><button onClick={()=>{I(0);P('questions')}}>{t.start}</button><button className="secondary" onClick={()=>P('chat')}>{t.ask}</button></div><p className="pilot">{t.pilot}</p></section>}
+ {page==='questions'&&<section className="content"><p>{idx+1} / {questions.length}</p><div className="progress"><span style={{width:(idx+1)*25+'%'}}/></div><h1>{questions[idx][lang==='en'?1:2]}</h1><p>{t.notice}</p><div className="actions"><button onClick={()=>reply(true)}>{t.yes}</button><button className="secondary" onClick={()=>reply(false)}>{t.no}</button><button className="secondary" onClick={()=>reply(null)}>{t.skip}</button></div><button className="link" onClick={()=>idx?I(idx-1):P('home')}>{t.back}</button></section>}
+ {page==='review'&&<section className="content"><h1>{t.review}</h1><ul className="review">{questions.map(([id,en,hi],i)=><li key={id}><span>{lang==='en'?en:hi}<strong>{profile[id]===undefined?t.skip:profile[id]?t.yes:t.no}</strong></span><button className="link" onClick={()=>{I(i);P('questions')}}>{t.change}</button></li>)}</ul><button disabled={busy} onClick={()=>request('recommend')}>{busy?t.loading:t.see}</button></section>}
+ {page==='results'&&<section className="content"><h1>{t.see}</h1><p>{t.pilot}</p>{results?.results?.map((r,i)=><article className="result" key={r.scheme_id||i}><h2>{r.scheme_name||r.scheme_id}</h2><strong>{t.status[r.status]||r.status}</strong>{r.reasons?.map((v,j)=><p key={j}>{v}</p>)}{r.missing_fields?.length>0&&<p>{t.missing}: {r.missing_fields.map(v=>questions.find(q=>q[0]===v)?.[lang==='en'?1:2]||v).join('; ')}</p>}{sources(r.citations)}</article>)}<div className="actions"><button onClick={()=>P('chat')}>{t.ask}</button><button className="secondary" onClick={()=>P('review')}>{t.review}</button></div></section>}
+ {page==='chat'&&<section className="content"><h1>{t.ask}</h1><p>{t.pilot}</p><form onSubmit={e=>{e.preventDefault();request('chat')}}><label htmlFor="question">{t.ask}</label><textarea id="question" required maxLength="1000" value={question} onChange={e=>Q(e.target.value)} placeholder={t.placeholder}/><button disabled={busy}>{busy?t.loading:t.send}</button></form>{answer&&<article className="result" aria-live="polite"><p>{answer.answer_text||t.none}</p>{answer.citations?.length>0&&<><h2>{t.sources}</h2>{sources(answer.citations)}</>}</article>}<button className="link" onClick={()=>P('home')}>{t.back}</button></section>}
+ {error&&<p className="error" role="alert">{t.error}</p>}<footer><p>{t.notice}</p><button className="link" onClick={()=>{F({});A(null);R(null);I(0);P('home')}}>{t.restart}</button></footer></main>
 }
-
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(<App/>);
