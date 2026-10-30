@@ -45,8 +45,8 @@ export function createAnswerService({ passages = loadPassages(), model = askMode
       return { status: 'invalid_request', reason_code: 'invalid_question', answer_text: 'Enter a question of 1–1000 characters.', citations: [] };
     }
     const lang = languageOf(question, language);
-    const schemeId = requestedScheme && Object.hasOwn(schemes, requestedScheme) ? requestedScheme : schemeFromText(question);
-    if (requestedScheme && !schemeId) return failure('no_evidence', lang);
+    if (requestedScheme && !Object.hasOwn(schemes, requestedScheme)) return failure('no_evidence', lang);
+    const schemeId = requestedScheme || schemeFromText(question);
     let searchQuery = question;
     if (lang !== 'en') {
       try {
@@ -59,7 +59,8 @@ export function createAnswerService({ passages = loadPassages(), model = askMode
         return failure('model_unavailable', lang, schemeId);
       }
     }
-    if (schemeId && !/\s/u.test(question.trim()) && schemeFromText(question)) {
+    const bareName = /^(?:pm[\s-]?kisan|पीएम[\s-]?किसान|प्रधानमंत्री किसान|nmmss?|national means[\s-]?cum[\s-]?merit scholarship)$/iu.test(question.trim());
+    if (schemeId && bareName) {
       const name = schemes[schemeId].name;
       return { status: 'clarify', language: lang, scheme_id: schemeId, answer_text: lang === 'hi' ? `${name} के बारे में लाभ, शर्तें या आवेदन प्रक्रिया में से क्या जानना चाहेंगे?` : `What would you like to know about ${name}: benefits, conditions, or application steps?`, reason_code: 'missing_intent', citations: [] };
     }

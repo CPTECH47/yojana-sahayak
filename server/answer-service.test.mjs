@@ -32,6 +32,15 @@ test('unsupported amounts and missing evidence are refused', async () => {
   assert.deepEqual(result.citations, []);
   const unknown = await falseAmount.chat({ question: 'How much does the fictional Moon Farmer Scheme pay?', language: 'en' });
   assert.equal(unknown.reason_code, 'no_evidence');
+  const invalidScheme = await falseAmount.chat({ question: 'What does PM-KISAN pay?', scheme_id: 'fictional-scheme' });
+  assert.equal(invalidScheme.reason_code, 'no_evidence');
+});
+
+test('a known scheme name alone asks a useful clarifying question', async () => {
+  const service = createAnswerService({ passages, model: async () => { throw new Error('model should not run'); } });
+  const result = await service.chat({ question: 'PM KISAN' });
+  assert.equal(result.status, 'clarify');
+  assert.equal(result.reason_code, 'missing_intent');
 });
 
 test('fictional profiles produce preliminary, excluded and missing-information results', () => {
