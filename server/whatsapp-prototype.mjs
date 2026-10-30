@@ -7,10 +7,12 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { answerMatch, demoCommand } from './yojana-answer.mjs';
 import { createAnswerService } from './answer-service.mjs';
+import { createWhatsAppConversation } from './whatsapp-flow.mjs';
 
 const authDir = fileURLToPath(new URL('./.baileys-auth/', import.meta.url));
 const seen = new Set();
 const answers = createAnswerService();
+const conversation = createWhatsAppConversation({ answers, match: answerMatch });
 
 function messageText(message) {
   const content = message.message?.ephemeralMessage?.message ?? message.message;
@@ -67,15 +69,7 @@ async function start() {
       const text = demoCommand(messageText(message));
       if (text === null) continue;
       try {
-        let reply;
-        if (/^(start|hi|hello)?$/i.test(text)) reply = 'Yojana Sahayak pilot. Ask YOJANA PM-KISAN kitna paisa deta hai?, YOJANA PMUY who can apply?, YOJANA PM Vishwakarma benefits, or YOJANA PM-SYM age limit. NMMSS dates are checked only for the listed 2026-27 application window. YOJANA MATCH yes no no is a fictional PM-KISAN rehearsal, not an official eligibility decision.';
-        else if (/^match\b/i.test(text)) reply = answerMatch(text);
-        else if (text) {
-          const result = await answers.chat({ question: text });
-          reply = result.answer_text;
-          if (result.citations?.length) reply += '\n' + result.citations.map(c => `Source: ${c.title}, ${c.locator} — ${c.url}`).join('\n');
-        }
-        else reply = 'This first test accepts text only. Send YOJANA START.';
+        const reply = await conversation.handle(jid, text);
         await socket.sendMessage(jid, { text: reply });
         console.log('Replied to one incoming message.');
       } catch (error) {

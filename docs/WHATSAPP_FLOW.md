@@ -9,10 +9,11 @@
 
 ## WhatsApp journey
 
-1. A person sends `YOJANA START` or `YOJANA <question>` in a direct chat. The prefix is required during the prototype test on a personal number.
-2. The bot identifies the language, finds approved passages for the relevant scheme, and asks the local model to write a concise answer using only those passages.
-3. An answer includes the official document title, issuing authority, page/section and source URL. Time-sensitive claims show when the source was checked.
-4. A match result is preliminary. Missing answers stay unknown; the user can ask a volunteer or confirm on the official portal.
+1. A person sends `YOJANA START` in a direct chat. The prefix is required during the prototype test on a personal number.
+2. The bot greets the person and asks them to reply `YOJANA HINDI` or `YOJANA ENGLISH`. It stores that choice by direct-chat ID in memory for this process session; a restart clears the choices.
+3. The bot shows next steps in the chosen language. It then finds approved passages for the relevant scheme and asks the local model to write a concise answer using only those passages.
+4. An answer includes the official document title, issuing authority, page/section and source URL. Time-sensitive claims show when the source was checked.
+5. A match result is preliminary. Missing answers stay unknown; the user can ask a volunteer or confirm on the official portal.
 
 ## How the pilot reduces unsupported answers
 
