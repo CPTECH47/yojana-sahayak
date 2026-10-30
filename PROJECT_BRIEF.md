@@ -1,0 +1,25 @@
+# Yojana Sahayak — project brief
+
+**Captain and server integration:** Charchit. **Status:** working pilot under development.
+
+## Official INNOVISTA problem 03
+
+Build an assistant that answers government-scheme questions in Hindi and English with a named source document, and helps a person find schemes they may qualify for. The minimum working version requires **10–20 public scheme documents**, runtime retrieval of relevant passages before answering, and a short eligibility questionnaire. A working prototype, live demo, readable source/setup instructions and future ideas are submission items. Use public or sample data and do not submit real personal information. Voice, more languages and a WhatsApp-style chat are bonus goals.
+
+The exact judging weights, submission deadline and project URL have not been supplied to this repository.
+
+## One judge journey
+
+A fictional farmer in Uttarakhand asks about PM-KISAN, confirms sample landholding and exclusion answers, receives a preliminary match status with reasons, asks a new Hindi question and opens the cited official document. A fictional student then asks about NMMSS. An unsupported question must receive a clear no-evidence reply. A reviewed document change should alter the answer after re-ingestion.
+
+No result is an official eligibility decision or government endorsement. A dedicated WhatsApp number is an optional later setup until linked and tested. The present Baileys route uses an explicit `YOJANA ` prefix during personal-number testing.
+
+## Agreed API contract for the first integration slice
+
+`POST /api/chat` accepts `{ "question": string, "language"?: "en"|"hi"|"pa", "scheme_id"?: string }`. It returns `status` (`answered`, `clarify`, `insufficient_evidence`, `invalid_request` or `error`), `language`, `scheme_id`, `answer_text`, `reason_code` and `citations[]`. Each citation contains `evidence_id`, `document_id`, `title`, `authority`, `url`, `locator` and `verified_at`.
+
+`POST /api/recommend` accepts `{ "language"?: "en"|"hi", "profile": { "owns_cultivable_land"?: boolean, "income_tax_payer_last_year"?: boolean, "practising_registered_professional"?: boolean, "other_official_exclusion"?: boolean } }`. It returns `results[]` with `scheme_id`, `status` (`potential_match`, `needs_information` or `not_matched`), `reasons`, `missing_fields`, `citations` and `official_decision: false`. These fields are for the initial PM-KISAN pilot; the data owner must review and extend rules before claiming broader eligibility checks.
+
+## Current limits and owner boundaries
+
+The corpus currently has three official documents; the required 10–20 are still to be collected and checked. Local Qwen is required for generated chat answers. The current web screen is a practice UI pending the UI owner's branch. Supabase scheme storage, public deployment and voice are not yet verified. Charchit owns `server/` and integration; the UI owner owns `client/` and `index.html`; the data owner owns `supabase/` and reviewed source expansion. Teammates coordinate changes to shared contracts before editing them.
