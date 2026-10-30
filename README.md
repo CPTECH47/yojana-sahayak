@@ -21,7 +21,7 @@ To rebuild source passages, install `requirements-ingest.txt` in a Python enviro
 
 ## Team coordination
 
-Current owners, the eight-minute update format, and release gate are in [docs/TEAM_CHECKINS.md](docs/TEAM_CHECKINS.md).
+Current owners and the eight-minute update format are in [docs/TEAM_CHECKINS.md](docs/TEAM_CHECKINS.md). Source review and change-detection policy is in [docs/SOURCE_GOVERNANCE.md](docs/SOURCE_GOVERNANCE.md).
 
 ## Verified versus pending
 
