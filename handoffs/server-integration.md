@@ -2,13 +2,10 @@
 
 ## Change summary
 
-- Added a WhatsApp onboarding step: `YOJANA START` greets the user and offers quick text choices: reply `1` for Hindi or `2` for English. These two replies work without the prefix while awaiting a choice; language names and prefixed choices also work.
-- After language selection, added role selection and short yes/no/skip questionnaires for farmers (PM-KISAN), families (PMUY), and workers (PM-SYM). Student and artisan paths provide relevant official information without claiming eligibility because current reviewed eligibility rules are not available in this pilot.
-- Invalid answers repeat the current question. `YOJANA BACK`, `YOJANA SKIP`, `YOJANA CANCEL`, and `YOJANA EDIT` support correction, unknowns, stopping, and restarting role selection.
-- Questionnaire answers are held in per-chat process memory and cleared after the result or restart; the bot does not request Aadhaar or bank details.
-- Stores the language per direct-chat JID in memory for the lifetime of the running bot process. Each person can choose or switch independently. Restarting the process clears the choices.
-- Shows the next-step menu in the selected language, passes the choice into `/api/chat` answer service calls, labels citations in Hindi or English, and localizes preliminary PM-KISAN match replies.
-- Preserved the explicit `YOJANA ` prefix and added localized service-unavailable replies.
+- `YOJANA START` now returns a clearer bilingual welcome and language selector: “For Hindi, press 1” and “For English, press 2.”
+- Once language is selected, users can reply with just a role number, YES/NO, BACK, SKIP, or CANCEL while the questionnaire is active. The prefix remains required to start and for standalone scheme questions.
+- Invalid answers repeat the same question in the selected language. Farmers, families, and workers receive short questionnaires for selected PM-KISAN, PMUY, and PM-SYM rules. Student and artisan paths provide official information without claiming eligibility.
+- Answers stay in per-chat process memory and are cleared after completion or restart. The bot does not ask for Aadhaar or bank details.
 
 ## Files changed
 
@@ -28,10 +25,10 @@
 
 ## Unfinished and unverified
 
-- The updated `YOJANA START` and language-selection journey has not been tested on the paired WhatsApp phone.
+- The updated welcome and multi-turn questionnaire have not yet been retested on the paired WhatsApp phone.
 - Live Qwen answers, message delivery, and opening cited links from WhatsApp remain unverified.
 - Language choice is session-only and is not persisted to Supabase.
-- The text route does not implement a multi-turn eligibility questionnaire; only selected PM-KISAN sample matching exists.
+- Checks cover selected conditions only; they are preliminary and are not government eligibility decisions.
 
 ## API and handoff fields
 

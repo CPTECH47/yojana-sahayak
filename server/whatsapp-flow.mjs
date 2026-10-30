@@ -16,13 +16,13 @@ function isStart(text) {
 }
 
 function languagePrompt() {
-  return 'नमस्ते! Welcome to Yojana Sahayak.\nकृपया भाषा चुनें / Please choose your language:\n1 लिखें हिंदी के लिए / Reply 1 for Hindi\n2 लिखें अंग्रेज़ी के लिए / Reply 2 for English';
+  return '🌱 Yojana Sahayak\nआपकी ज़रूरत के अनुसार सरकारी योजनाओं की जानकारी।\nGovernment scheme guidance, made easier.\n\nभाषा चुनें / Choose your language:\nहिंदी के लिए 1 दबाएँ / For Hindi, press 1\nअंग्रेज़ी के लिए 2 दबाएँ / For English, press 2';
 }
 
 function rolePrompt(language, error = false) {
   const lead = error ? (language === 'hi' ? 'कृपया सूची में से एक विकल्प चुनें।\n' : 'Please choose one of the listed options.\n') : '';
-  if (language === 'hi') return `${lead}आपके लिए सही योजना जानकारी ढूँढने के लिए, इनमें से कौन-सा विकल्प आप पर लागू होता है?\n1 किसान\n2 विद्यार्थी\n3 कामगार\n4 कारीगर\n5 परिवार का सदस्य / अन्य नागरिक\n6 किसी व्यक्ति की मदद करने वाला स्वयंसेवक\n\nYOJANA और विकल्प का नंबर भेजें, जैसे YOJANA 1।`;
-  return `${lead}Which best describes you? I’ll use this to find relevant scheme information.\n1 Farmer\n2 Student\n3 Worker\n4 Artisan or craft worker\n5 Family member / other citizen\n6 Volunteer helping someone\n\nReply with YOJANA and one number, for example YOJANA 1.`;
+  if (language === 'hi') return `${lead}आपके लिए उपयोगी योजना जानकारी ढूँढने के लिए, अपना विकल्प चुनें:\n1 किसान\n2 विद्यार्थी\n3 कामगार\n4 कारीगर\n5 परिवार का सदस्य / अन्य नागरिक\n6 किसी व्यक्ति की मदद करने वाला स्वयंसेवक\n\nनीचे केवल विकल्प का नंबर भेजें।`;
+  return `${lead}Which best describes you? I’ll use this to find relevant scheme information.\n1 Farmer\n2 Student\n3 Worker\n4 Artisan or craft worker\n5 Family member / other citizen\n6 Volunteer helping someone\n\nReply with the number.`;
 }
 
 function intro(language) {
@@ -62,11 +62,11 @@ const roleNames = {
 function currentQuestion(state, error = false) {
   const language = state.language;
   const item = questionSets[state.role][state.index];
-  const lead = error ? (language === 'hi' ? 'जवाब समझ नहीं आया। YOJANA हाँ/नहीं, YOJANA SKIP, YOJANA BACK या YOJANA CANCEL भेजें।\n' : 'I didn’t understand that. Send YOJANA YES/NO, YOJANA SKIP, YOJANA BACK, or YOJANA CANCEL.\n') : '';
-  const answerHint = language === 'hi' ? '\nजवाब: YOJANA हाँ / YOJANA नहीं' : '\nAnswer: YOJANA YES / YOJANA NO';
+  const lead = error ? (language === 'hi' ? 'जवाब समझ नहीं आया। कृपया हाँ / नहीं लिखें, या BACK, SKIP, CANCEL चुनें।\n' : 'I didn’t understand that. Reply YES or NO, or use BACK, SKIP, or CANCEL.\n') : '';
+  const answerHint = language === 'hi' ? '\nजवाब: हाँ / नहीं' : '\nAnswer: YES / NO';
   const controls = language === 'hi'
-    ? '\nपिछले सवाल पर लौटें: YOJANA BACK · पता न हो: YOJANA SKIP · रोकें: YOJANA CANCEL'
-    : '\nCorrect the previous answer: YOJANA BACK · Unsure: YOJANA SKIP · Stop: YOJANA CANCEL';
+    ? '\nपिछले सवाल पर लौटें: BACK · पता न हो: SKIP · रोकें: CANCEL'
+    : '\nCorrect the previous answer: BACK · Unsure: SKIP · Stop: CANCEL';
   return `${lead}${state.index + 1}/${questionSets[state.role].length}. ${item[language]}${answerHint}${controls}`;
 }
 
@@ -241,9 +241,11 @@ export function createWhatsAppConversation({ answers, match, passages = loadPass
     return reply;
   }
 
-  function acceptsBareLanguageChoice(chatId, text) {
-    return questionnaireByChat.get(chatId)?.phase === 'language' && ['1', '2'].includes(normalize(text));
+  function acceptsBareQuestionnaireReply(chatId, text) {
+    const phase = questionnaireByChat.get(chatId)?.phase;
+    if (phase === 'language') return ['1', '2'].includes(normalize(text));
+    return (phase === 'role' || phase === 'questions') && Boolean(String(text ?? '').trim());
   }
 
-  return { handle, acceptsBareLanguageChoice };
+  return { handle, acceptsBareQuestionnaireReply };
 }

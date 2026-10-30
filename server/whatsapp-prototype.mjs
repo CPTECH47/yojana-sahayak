@@ -68,7 +68,7 @@ async function start() {
       if (seen.size > 200) seen.clear();
       const rawText = messageText(message);
       const command = demoCommand(rawText);
-      if (command === null && !conversation.acceptsBareLanguageChoice(jid, rawText)) continue;
+      if (command === null && !conversation.acceptsBareQuestionnaireReply(jid, rawText)) continue;
       const text = command ?? rawText.trim();
       try {
         const reply = await conversation.handle(jid, text);

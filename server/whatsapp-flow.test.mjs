@@ -24,7 +24,8 @@ async function startAndChoose(flow, jid = 'chat-a', language = '1') {
 
 test('START asks language, then role, and farmer questions produce a sourced preliminary result', async () => {
   const { flow, calls } = conversation();
-  assert.match(await flow.handle('chat-a', 'START'), /Reply 1 for Hindi/u);
+  assert.match(await flow.handle('chat-a', 'START'), /For Hindi, press 1/u);
+  assert.match(await flow.handle('chat-a', 'START'), /Government scheme guidance/u);
   const roleMenu = await flow.handle('chat-a', '1');
   assert.match(roleMenu, /1 किसान/u);
   assert.match(roleMenu, /आधार, बैंक विवरण/u);
@@ -102,11 +103,18 @@ test('each direct chat has its own language and profile state', async () => {
   assert.deepEqual(calls.at(-1), { question: 'PMUY eligibility', language: 'hi' });
 });
 
-test('bare language digits are accepted only while a chat is waiting for language selection', async () => {
+test('bare replies are accepted only while a chat is actively inside the questionnaire', async () => {
   const { flow } = conversation();
-  assert.equal(flow.acceptsBareLanguageChoice('chat-a', '1'), false);
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', '1'), false);
   await flow.handle('chat-a', 'START');
-  assert.equal(flow.acceptsBareLanguageChoice('chat-a', '1'), true);
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', '1'), true);
   await flow.handle('chat-a', '1');
-  assert.equal(flow.acceptsBareLanguageChoice('chat-a', '2'), false);
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', '1'), true);
+  await flow.handle('chat-a', '1');
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', 'YES'), true);
+  await flow.handle('chat-a', 'YES');
+  await flow.handle('chat-a', 'NO');
+  await flow.handle('chat-a', 'NO');
+  await flow.handle('chat-a', 'NO');
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', 'what is PM-KISAN?'), false);
 });

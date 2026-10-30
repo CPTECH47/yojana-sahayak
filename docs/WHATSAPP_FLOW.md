@@ -11,7 +11,7 @@
 
 1. A person sends `YOJANA START` in a direct chat. The prefix is required during the prototype test on a personal number.
 2. The bot greets the person and asks them to reply `1` for Hindi or `2` for English. It then asks for a role: farmer, student, worker, artisan, family/other, or volunteer.
-3. Farmers, families, and workers get short scheme-specific questions. Answers must use the `YOJANA ` prefix (for example `YOJANA YES`, `YOJANA SKIP`, `YOJANA BACK`, or `YOJANA CANCEL`) during personal-number testing. Invalid replies prompt the same question again; `BACK` lets the user correct the previous answer. `SKIP` leaves the field unknown.
+3. Farmers, families, and workers get short scheme-specific questions. Once the questionnaire starts, the user can reply naturally with a number, YES/NO, BACK, SKIP, or CANCEL without repeating the prefix. Outside the active questionnaire, a `YOJANA ` prefix is still required during personal-number testing. Invalid replies prompt the same question again; `BACK` lets the user correct the previous answer. `SKIP` leaves the field unknown.
 4. The bot checks selected PM-KISAN, PMUY, or PM-SYM rules against reviewed passages and returns a cited preliminary result. Student and artisan paths show an official information link but do not claim an eligibility match.
 5. Answers stay in per-chat process memory until completion or restart. The bot asks for no Aadhaar or bank details. It does not make an official eligibility decision.
 6. For ordinary scheme questions, the bot retrieves approved passages and includes source title, authority, locator and URL. Time-sensitive sources expire from retrieval.
