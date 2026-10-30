@@ -52,7 +52,12 @@ def main() -> None:
             body = soup.select_one("#pibReleaseBody")
             if body is None:
                 raise ValueError(f"No PIB article body for {source['id']}")
-            chunks = [("article body", clean(body.get_text(" ", strip=True)))]
+            chunks = []
+            for n, paragraph in enumerate(body.find_all("p"), 1):
+                text = clean(paragraph.get_text(" ", strip=True))
+                if "annexure" in text.lower():
+                    break  # Tables of state-level operational counts are outside this pilot.
+                chunks.append((f"article paragraph {n}", text))
         useful = [(locator, body) for locator, body in chunks if len(body) >= 80]
         if not useful:
             raise ValueError(f"Empty extraction for {source['id']}")
