@@ -14,7 +14,7 @@ function isStart(text) {
 }
 
 function languagePrompt() {
-  return 'नमस्ते! Welcome to Yojana Sahayak.\nकृपया भाषा चुनें / Please choose a language:\n1 लिखें हिंदी के लिए / Reply 1 for Hindi\n2 लिखें अंग्रेज़ी के लिए / Reply 2 for English\nहर संदेश की शुरुआत YOJANA से करें / Start every message with YOJANA.';
+  return 'नमस्ते! Welcome to Yojana Sahayak.\nकृपया भाषा चुनें / Please choose a language:\n1 लिखें हिंदी के लिए / Reply 1 for Hindi\n2 लिखें अंग्रेज़ी के लिए / Reply 2 for English\nभाषा चुनने के बाद अपने सवाल की शुरुआत YOJANA से करें / After choosing, start each question with YOJANA.';
 }
 
 function nextSteps(language) {
@@ -69,5 +69,9 @@ export function createWhatsAppConversation({ answers, match }) {
     return reply;
   }
 
-  return { handle };
+  function acceptsBareLanguageChoice(chatId, text) {
+    return !languageByChat.has(chatId) && ['1', '2'].includes(normalize(text));
+  }
+
+  return { handle, acceptsBareLanguageChoice };
 }

@@ -10,7 +10,7 @@
 ## WhatsApp journey
 
 1. A person sends `YOJANA START` in a direct chat. The prefix is required during the prototype test on a personal number.
-2. The bot greets the person and asks them to reply `YOJANA 1` for Hindi or `YOJANA 2` for English. `YOJANA HINDI` and `YOJANA ENGLISH` also work. It stores that choice by direct-chat ID in memory for this process session; a restart clears the choices.
+2. The bot greets the person and asks them to reply `1` for Hindi or `2` for English. These two language choices are accepted without the prefix while the bot is waiting for a choice; `YOJANA 1`, `YOJANA 2`, `YOJANA HINDI` and `YOJANA ENGLISH` also work. It stores that choice by direct-chat ID in memory for this process session; a restart clears the choices.
 3. The bot shows next steps in the chosen language. It then finds approved passages for the relevant scheme and asks the local model to write a concise answer using only those passages.
 4. An answer includes the official document title, issuing authority, page/section and source URL. Time-sensitive claims show when the source was checked.
 5. A match result is preliminary. Missing answers stay unknown; the user can ask a volunteer or confirm on the official portal.

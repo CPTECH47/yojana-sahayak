@@ -36,7 +36,9 @@ test('language preference is isolated per chat and can be switched', async () =>
 test('numbered replies are simple language-selection aliases', async () => {
   const { conversation } = fakeConversation();
   assert.match(await conversation.handle('chat-a', 'YOJANA START'), /Reply 1 for Hindi/u);
+  assert.equal(conversation.acceptsBareLanguageChoice('chat-a', '1'), true);
   assert.match(await conversation.handle('chat-a', '1'), /अब मैं हिंदी में/u);
+  assert.equal(conversation.acceptsBareLanguageChoice('chat-a', '2'), false);
   assert.match(await conversation.handle('chat-b', '2'), /reply in English/u);
 });
 

@@ -66,8 +66,10 @@ async function start() {
       if (message.key.fromMe || !jid || jid.endsWith('@g.us') || !id || seen.has(id)) continue;
       seen.add(id);
       if (seen.size > 200) seen.clear();
-      const text = demoCommand(messageText(message));
-      if (text === null) continue;
+      const rawText = messageText(message);
+      const command = demoCommand(rawText);
+      if (command === null && !conversation.acceptsBareLanguageChoice(jid, rawText)) continue;
+      const text = command ?? rawText.trim();
       try {
         const reply = await conversation.handle(jid, text);
         await socket.sendMessage(jid, { text: reply });
