@@ -93,16 +93,30 @@ function formatRecommendation(result, language) {
   const item = result.results?.[0];
   if (!item) return language === 'hi' ? 'अभी सुझाव नहीं बन पाया। कृपया बाद में फिर कोशिश करें।' : 'I could not prepare a suggestion just now. Please try again.';
   const status = item.status === 'potential_match'
-    ? (language === 'hi' ? 'शुरुआती जाँच में संभावित मेल' : 'Preliminary possible match')
+    ? (language === 'hi' ? 'चुनी गई शर्तों के आधार पर संभावित मेल' : 'Possible match based on checked conditions')
     : item.status === 'not_matched'
-      ? (language === 'hi' ? 'चुनी हुई शर्तों से मेल नहीं' : 'Does not match the checked conditions')
+      ? (language === 'hi' ? 'एक या अधिक जाँची गई शर्तों से मेल नहीं' : 'Does not match one or more checked conditions')
       : (language === 'hi' ? 'अधिक जानकारी चाहिए' : 'More information is needed');
   const citationLabel = language === 'hi' ? 'स्रोत' : 'Source';
   const explanation = item.reasons?.map(reason => `• ${reason}`).join('\n') || '';
-  const sources = item.citations?.map(c => `${citationLabel}: ${c.title}, ${c.locator} — ${c.url}`).join('\n') || '';
-  const note = result.coverage_note || '';
-  const next = language === 'hi' ? 'आधिकारिक पुष्टि के लिए संबंधित सरकारी पोर्टल या सहायता केंद्र से जाँचें।' : 'Confirm with the official scheme portal or help desk.';
-  return `${item.scheme_name}\n${status}\n${explanation}\n${note}\n${next}${sources ? `\n${sources}` : ''}`;
+  const groupedCitations = new Map();
+  for (const citation of item.citations || []) {
+    const key = `${citation.title}\n${citation.url}`;
+    if (!groupedCitations.has(key)) groupedCitations.set(key, { ...citation, locators: [] });
+    const group = groupedCitations.get(key);
+    if (citation.locator && !group.locators.includes(citation.locator)) group.locators.push(citation.locator);
+  }
+  const sources = [...groupedCitations.values()].map(citation => {
+    const locator = citation.locators.length ? `, ${citation.locators.join(', ')}` : '';
+    return `${citationLabel}: ${citation.title}${locator} — ${citation.url}`;
+  }).join('\n');
+  const note = language === 'hi'
+    ? 'यह शुरुआती जाँच है, सरकारी निर्णय नहीं। पूरी शर्तें आधिकारिक पोर्टल या स्थानीय कार्यालय से जाँचें।'
+    : 'Preliminary check only, not an official decision. Verify the full rules with the official portal or local office.';
+  const csc = language === 'hi'
+    ? 'पास का Common Service Centre खोजें: https://locator.csccloud.in/ (वहाँ अपना क्षेत्र चुनें; सेवाएँ केंद्र के अनुसार अलग हो सकती हैं)।'
+    : 'Need in-person help? Find a Common Service Centre: https://locator.csccloud.in/ (select your area there; services vary by centre).';
+  return `${item.scheme_name}\n${status}${explanation ? `\n${explanation}` : ''}\n${note}${sources ? `\n${sources}` : ''}\n${csc}`;
 }
 
 function infoOnly(role, language, passages) {

@@ -18,13 +18,13 @@ The assistant retrieves relevant passages from its reviewed scheme corpus before
 4. The bot returns a preliminary result with a short reason and source links, or gives relevant information without claiming eligibility where reviewed rules are not available.
 5. The user can ask a scheme question; the bot answers from retrieved evidence and cites its source.
 
-Tapping a citation opens the official source. Some sources open as long PDF documents; the message includes the cited page so the user can locate the supporting section. People seeking in-person assistance can open the [official CSC locator](https://locator.csccloud.in/) and select their area there. The prototype does not automatically find or verify the nearest centres.
+Tapping a citation opens the official source. Some sources open as long PDF documents; the message includes the cited page so the user can locate the supporting section. Recommendation replies also offer the [official CSC locator](https://locator.csccloud.in/) for people seeking in-person help; users select their area there. The bot does not automatically find or verify the nearest centres.
 
 ## Current features
 
 - Hindi and English language selection and a role-based WhatsApp text journey.
 - Evidence-based answers from ten reviewed official documents and pages.
-- Source citations with issuing authority, verification date, URL, and page or section locator.
+- Source citations with title, URL, and page or section locator. Additional review metadata is recorded in the corpus manifest.
 - Insufficient-evidence responses instead of unsupported answers.
 - Preliminary selected-condition checks for PM-KISAN, PMUY, and PM-SYM.
 - Student and artisan information leads without unsupported eligibility claims.

@@ -52,10 +52,41 @@ test('family questionnaire recommends PMUY only as a preliminary match with its 
   await flow.handle('chat-a', 'no');
   const result = await flow.handle('chat-a', 'yes');
   assert.match(result, /PMUY/u);
-  assert.match(result, /शुरुआती जाँच में संभावित मेल/u);
+  assert.match(result, /संभावित मेल/u);
   assert.match(result, /pmuy.gov.in\/ujjwala2.html/u);
+  assert.match(result, /Common Service Centre/u);
+  assert.match(result, /locator\.csccloud\.in/u);
   assert.equal(calls[0].profile.scheme_id, 'pmuy');
   assert.equal(calls[0].profile.household_has_existing_lpg, false);
+});
+
+test('recommendation reply keeps a short summary, groups repeated source pages, and offers the manual CSC locator', async () => {
+  const { flow } = conversation({
+    recommend() {
+      return {
+        results: [{
+          scheme_name: 'PM-KISAN',
+          status: 'not_matched',
+          reasons: ['A listed professional is practising.'],
+          citations: [
+            { title: 'PM-KISAN Operational Guidelines', locator: 'page 2', url: 'https://example.gov/guidelines.pdf' },
+            { title: 'PM-KISAN Operational Guidelines', locator: 'page 3', url: 'https://example.gov/guidelines.pdf' },
+          ],
+        }],
+      };
+    },
+  });
+  await startAndChoose(flow, 'chat-a', '2');
+  await flow.handle('chat-a', '1');
+  for (const answer of ['yes', 'no', 'yes']) await flow.handle('chat-a', answer);
+  const result = await flow.handle('chat-a', 'no');
+  assert.match(result, /Does not match one or more checked conditions/u);
+  assert.match(result, /Preliminary check only/u);
+  assert.match(result, /page 2, page 3/u);
+  assert.equal((result.match(/Source:/gu) || []).length, 1);
+  assert.match(result, /locator\.csccloud\.in/u);
+  assert.match(result, /select your area there/u);
+  assert.doesNotMatch(result, /Confirm with the official scheme portal or help desk/u);
 });
 
 test('worker questionnaire checks only sourced PM-SYM conditions, including income band', async () => {
