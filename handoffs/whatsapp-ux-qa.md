@@ -25,7 +25,7 @@ Only interpolate fields actually returned by the validated server. Do not genera
 - Reviewed captain/server-integration commit b6fa4acc0394b4a31fdcf2c4da71608d80119773: YOJANA-prefixed direct text is routed to shared chat; replies append returned citation title, locator and URL. The start text is English-only, and match remains a fictional diagnostic shortcut; language selection, guided correction, voice and persistent conversation are not implemented in the reviewed handler.
 - On that exact commit, `node --test server/answer-service.test.mjs`: 5/5 pass. These tests use a mocked model for the Hindi answer and do not prove live model or WhatsApp delivery.
 - On the UI checkout's running local API: a fictional partial profile produced needs_information and two PM-KISAN source references. An unsupported fictional question received a no-evidence answer. Ollama endpoint was unavailable and the answerable PM-KISAN request returned model_unavailable.
-- Citation review verified the returned URL strings and page locators in the response; it did not confirm the government PDF opened or that every cited passage supports every claim.
+- Citation review verified the returned URL strings and page locators in the response. An attempt to open the exact PM-KISAN PDF through the web fetch returned HTTP 502; the URL must be retested on a phone and this does not establish that the document is absent. Claim-by-claim support was not checked.
 
 ## Remaining team integration checks
 
