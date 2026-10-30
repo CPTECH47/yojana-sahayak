@@ -8,24 +8,30 @@ const ignored = new Set(['the', 'a', 'an', 'is', 'are', 'does', 'do', 'how', 'wh
 export const schemes = Object.freeze({
   'pm-kisan': { name: 'PM-KISAN', aliases: [/pm[\s-]?kisan/i, /पीएम[\s-]?किसान/u, /प्रधानमंत्री किसान/u] },
   nmmss: { name: 'National Means-cum-Merit Scholarship Scheme', aliases: [/\bnmmss?\b/i, /national means.{0,12}merit/i, /नेशनल मीन्स/u] },
+  pmuy: { name: 'Pradhan Mantri Ujjwala Yojana', aliases: [/\bpmuy\b/i, /ujjwala/i, /उज्ज्वला/u] },
+  'pm-vishwakarma': { name: 'PM Vishwakarma', aliases: [/pm[\s-]?vishwakarma/i, /विश्वकर्मा/u] },
+  'pm-sym': { name: 'Pradhan Mantri Shram Yogi Maandhan', aliases: [/pm[\s-]?sym/i, /shram yogi/i, /श्रम योगी/u] },
 });
 
 export function schemeFromText(text) {
   return Object.entries(schemes).find(([, scheme]) => scheme.aliases.some(alias => alias.test(text)))?.[0] ?? null;
 }
 
-export function filterApprovedPassages(passages, sources) {
+export function filterApprovedPassages(passages, sources, asOf = new Date()) {
   if (!Array.isArray(passages) || !Array.isArray(sources)) throw new Error('Corpus passages and manifest sources must be arrays');
-  const approvedIds = new Set(sources.filter(source => source?.status === 'approved' && typeof source.id === 'string').map(source => source.id));
+  const day = asOf.toISOString().slice(0, 10);
+  const approvedIds = new Set(sources.filter(source => source?.status === 'approved'
+    && typeof source.id === 'string'
+    && (!source.valid_until || source.valid_until >= day)).map(source => source.id));
   return passages.filter(passage => approvedIds.has(passage.document_id));
 }
 
-export function loadPassages() {
+export function loadPassages(asOf = new Date()) {
   const data = JSON.parse(readFileSync(corpusPath, 'utf8'));
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   if (!Array.isArray(data.passages)) throw new Error('Corpus passages are missing');
   if (!Array.isArray(manifest.sources)) throw new Error('Corpus source manifest is missing');
-  return filterApprovedPassages(data.passages, manifest.sources);
+  return filterApprovedPassages(data.passages, manifest.sources, asOf);
 }
 
 function tokens(text) {

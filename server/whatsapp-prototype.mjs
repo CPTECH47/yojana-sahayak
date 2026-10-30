@@ -68,7 +68,7 @@ async function start() {
       if (text === null) continue;
       try {
         let reply;
-        if (/^(start|hi|hello)?$/i.test(text)) reply = 'Yojana Sahayak pilot. Ask YOJANA PM-KISAN kitna paisa deta hai? or YOJANA NMMSS scholarship amount. YOJANA MATCH yes no no is a fictional three-check rehearsal. This is not an official eligibility decision.';
+        if (/^(start|hi|hello)?$/i.test(text)) reply = 'Yojana Sahayak pilot. Ask YOJANA PM-KISAN kitna paisa deta hai?, YOJANA PMUY who can apply?, YOJANA PM Vishwakarma benefits, or YOJANA PM-SYM age limit. NMMSS dates are checked only for the listed 2026-27 application window. YOJANA MATCH yes no no is a fictional PM-KISAN rehearsal, not an official eligibility decision.';
         else if (/^match\b/i.test(text)) reply = answerMatch(text);
         else if (text) {
           const result = await answers.chat({ question: text });

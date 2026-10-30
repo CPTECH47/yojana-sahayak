@@ -39,7 +39,8 @@ function numericClaimsSupported(answer, evidence) {
   return numbers.every(value => source.includes(value.replace(/,/g, '')));
 }
 
-export function createAnswerService({ passages = loadPassages(), model = askModel } = {}) {
+export function createAnswerService({ passages, model = askModel } = {}) {
+  const getPassages = () => passages ?? loadPassages();
   async function chat({ question, language, scheme_id: requestedScheme } = {}) {
     if (typeof question !== 'string' || !question.trim() || question.length > 1000) {
       return { status: 'invalid_request', reason_code: 'invalid_question', answer_text: 'Enter a question of 1–1000 characters.', citations: [] };
@@ -64,7 +65,7 @@ export function createAnswerService({ passages = loadPassages(), model = askMode
       const name = schemes[schemeId].name;
       return { status: 'clarify', language: lang, scheme_id: schemeId, answer_text: lang === 'hi' ? `${name} के बारे में लाभ, शर्तें या आवेदन प्रक्रिया में से क्या जानना चाहेंगे?` : `What would you like to know about ${name}: benefits, conditions, or application steps?`, reason_code: 'missing_intent', citations: [] };
     }
-    const evidence = retrieve(passages, searchQuery, schemeId);
+    const evidence = retrieve(getPassages(), searchQuery, schemeId);
     if (!evidence.length) return failure('no_evidence', lang, schemeId);
     const evidenceText = evidence.map(p => `[${p.id}] ${p.title}, ${p.locator}: ${p.text}`).join('\n\n');
     let draft;
@@ -97,7 +98,7 @@ export function createAnswerService({ passages = loadPassages(), model = askMode
     if (professional === true) failed.push('A registered professional is practising.');
     if (other === true) failed.push('Another official exclusion applies.');
     const status = failed.length ? 'not_matched' : missing.length ? 'needs_information' : 'potential_match';
-    const ruleEvidence = passages.filter(p => ['pmkisan-guidelines:2', 'pmkisan-guidelines:3'].includes(p.id)).map(citation);
+    const ruleEvidence = getPassages().filter(p => ['pmkisan-guidelines:2', 'pmkisan-guidelines:3'].includes(p.id)).map(citation);
     return {
       status: 'ok', language: ['en', 'hi'].includes(language) ? language : 'en',
       results: [{ scheme_id: 'pm-kisan', scheme_name: schemes['pm-kisan'].name, status, reasons: failed.length ? failed : ['Basic checked conditions pass; official land records and full guidelines still require verification.'], missing_fields: missing, citations: ruleEvidence, official_decision: false }],

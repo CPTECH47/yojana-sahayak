@@ -4,7 +4,7 @@
 
 The answer service uses reviewed, versioned official documents as its trusted evidence layer. myScheme, India.gov.in and data.gov.in can help discover schemes, official pages and changes; portal listings alone do not become answer evidence or establish eligibility. One scheme may need several documents (for example, current guidelines, an amendment, an FAQ, and a state or season notice), so the 10–20 target counts actual documents, not schemes or URLs.
 
-For each candidate, preserve the source bytes or a stable snapshot and record its issuing body, exact URL, publication date if stated, access date, SHA-256, extraction result and page/section locator. Record human-reviewed eligibility conditions, exclusions and unresolved applicability. Keep fictional test profiles separate from source facts.
+For each candidate, keep a local source snapshot where permitted and record its issuing body, exact URL, publication date if stated, access date, SHA-256, extraction result and page/section locator. Do not commit full web pages or documents when their terms reserve reproduction rights; store concise original summaries and metadata instead. Record human-reviewed eligibility conditions, exclusions and unresolved applicability. Keep fictional test profiles separate from source facts.
 
 ## Review states
 
@@ -18,7 +18,7 @@ Use these manifest states:
 - `superseded`: older approved version retained for history, excluded from retrieval
 - `failed`: fetch or extraction failed; not usable evidence
 
-The answer service must retrieve passages only from documents with `status: approved`. Candidate material must not silently enter the answer index.
+The answer service must retrieve passages only from documents with `status: approved`. Candidate material must not silently enter the answer index. A source with `valid_until` is removed automatically after that date and must be rechecked before it can answer again.
 
 ## Change monitoring (planned, not currently running)
 
@@ -30,4 +30,12 @@ The answer service must retrieve passages only from documents with `status: appr
 
 ## Current state
 
-The pilot has three approved document IDs. It does not yet include a scheduled updater, automatic change notifications, snapshot version history, or a complete 10–20 document corpus. The manifest gate is enforced by `server/corpus.mjs`; verify any future import before a document is marked approved.
+The current snapshot has ten reviewed official documents/pages across PM-KISAN, NMMSS, PMUY, PM Vishwakarma and PM-SYM. The NMMSS application-calendar sources expire after 2026-10-31. The linked PMUY declaration PDF was excluded because text extraction returned no readable text. The project does not have a scheduled updater, automatic change notifications, or full snapshot version history. The manifest approval/expiry gate is enforced by `server/corpus.mjs`; verify any future import before marking it approved.
+
+## Discovery sources supplied for the project
+
+- [myScheme](https://www.myscheme.gov.in/) helps discover schemes and related official pages using citizen details.
+- [India.gov.in scheme directory](https://www.india.gov.in/my-government/schemes) helps discover scheme pages by ministry/category.
+- [data.gov.in](https://www.data.gov.in/) helps discover datasets. A dataset is not eligibility guidance; check its publisher, update date, and methodology before using it.
+
+These portals may alert the team to new or changed material. The chatbot must cite the issuing ministry/programme source for an answer. A portal summary alone cannot approve a rule or establish personal eligibility.

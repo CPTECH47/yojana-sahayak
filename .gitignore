@@ -8,3 +8,4 @@ dist/
 server/.baileys-auth/
 corpus/docs/*.html
 corpus/docs/pmkisan-operational-guidelines.pdf
+corpus/source_snapshots/
