@@ -75,3 +75,9 @@
 - Checks: `npm.cmd test` 45/45 passed; `npm.cmd run build` passed; `git diff --check` passed. The phone test reached a transcription confirmation, but the recognized scheme was incorrect. Do not claim the full voice-to-cited-answer flow has passed on a phone.
 - Remaining: Pulkit must review the current NSP deadline and PMUY Hindi application guidance; Tejas must verify mobile presentation, browser failure/refresh cases, source links, WhatsApp, and accessibility. Automatic freshness behavior has not been manually tested by withdrawing a source in a real browser. Turbo, GPU execution, Hindi/English accuracy and latency are unverified. No public deployment was tested.
 - API: `GET /api/catalog` includes `generated_at`, `refresh_after_ms`, `schemes`, `records` and `Cache-Control: no-store`; chat/recommend contracts unchanged. `/start-whatsapp` redirects to `YOJANA_WHATSAPP_NUMBER` (digits with country code) or the explicitly approved demo number.
+
+## Voice menu choices — 31 October
+
+- `server/voice-flow.mjs` now maps confirmed spoken Hindi and English numbers one through six to the active questionnaire; typed replies and direct voice-question confirmation remain unchanged. Short spoken yes/no still follows the same confirmation step. Transcription is still local Whisper small and accuracy is not guaranteed.
+- `node --test server/voice-flow.test.mjs`: 5/5 passed, including mocked transcripts passing into the real language and role conversation. `npm.cmd test`: 46/46 passed before the final additional integration test; `npm.cmd run build` passed; `git diff --check` passed.
+- Unfinished: real WhatsApp phone test for recognized number choices, Hindi/English recognition accuracy and latency. An unclear recording must be cancelled and retried or typed. No API fields changed.

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createVoiceFlow } from './voice-flow.mjs';
+import { createWhatsAppConversation } from './whatsapp-flow.mjs';
 
 test('voice requires opt-in and confirmation before a cited answer', async()=>{
   let calls=0;
@@ -38,4 +39,26 @@ test('voice notes in an active conversation work without the voice command and r
   assert.equal(submitted,0);
   assert.equal(await flow.handle('active-chat','confirm'),'next question');
   assert.equal(submitted,1);
+});
+
+test('spoken number choices are applied only after confirmation to an active questionnaire',async()=>{
+  const applied=[];
+  const flow=createVoiceFlow({fallback:async(_id,text)=>{applied.push(text);return 'next'},isQuestionnaireReply:()=>true,transcribe:async()=>({text:'एक।',language:'hi'}),answers:{}});
+  assert.match(await flow.handleAudio('chat',Buffer.from('fake'),true),/YOJANA CONFIRM/);
+  assert.deepEqual(applied,[]);
+  assert.equal(await flow.handle('chat','confirm'),'next');
+  assert.deepEqual(applied,['1']);
+});
+
+test('confirmed spoken language and role choices advance the real conversation',async()=>{
+  const answers={chat:async()=>({answer_text:'',citations:[]}),recommend:()=>({results:[]})};
+  const conversation=createWhatsAppConversation({answers});
+  let spoken='one';
+  const flow=createVoiceFlow({answers,fallback:conversation.handle,isQuestionnaireReply:conversation.acceptsBareQuestionnaireReply,transcribe:async()=>({text:spoken,language:'en'})});
+  await conversation.handle('chat','start');
+  await flow.handleAudio('chat',Buffer.from('fake'),true);
+  assert.match(await flow.handle('chat','confirm'),/किसान/);
+  spoken='एक';
+  await flow.handleAudio('chat',Buffer.from('fake'),true);
+  assert.match(await flow.handle('chat','confirm'),/PM-KISAN/);
 });
