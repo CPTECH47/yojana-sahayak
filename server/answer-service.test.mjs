@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAnswerService } from './answer-service.mjs';
 import { loadPassages, retrieve } from './corpus.mjs';
+import { topicFor } from './verified-facts.mjs';
 
 const passages = loadPassages();
 
@@ -38,6 +39,26 @@ test('a known scheme name alone asks a useful clarifying question', async () => 
   const result = await service.chat({ question: 'PM KISAN' });
   assert.equal(result.status, 'clarify');
   assert.equal(result.reason_code, 'missing_intent');
+});
+
+test('common free-form overview and scheme questions map to reviewed topics in English and Hindi', () => {
+  assert.equal(topicFor('What is PM-KISAN?'), 'overview');
+  assert.equal(topicFor('Tell me about PM Vishwakarma'), 'overview');
+  assert.equal(topicFor('पीएम-एसवाईएम क्या है?'), 'overview');
+  assert.equal(topicFor('What documents do I need for PMUY?'), 'documents');
+  assert.equal(topicFor('NMMSS की आखिरी तारीख क्या है?'), 'deadline');
+  assert.equal(topicFor('PM-SYM में कितनी पेंशन मिलती है?'), 'benefit');
+});
+
+test('overview questions answer from a pinned scheme fact and keep its citation', async () => {
+  const service = createAnswerService({ passages, model: async (_messages, schema) => {
+    const fact = schema.properties.fact_ids.items.enum.find(id => id === 'pmvishwakarma-scheme-booklet-2025:1');
+    return { fact_ids: [fact] };
+  } });
+  const result = await service.chat({ question: 'What is PM Vishwakarma?', language: 'en' });
+  assert.equal(result.status, 'answered');
+  assert.match(result.answer_text, /MSME 2025 booklet/u);
+  assert.equal(result.citations[0].evidence_id, 'pmvishwakarma-scheme-booklet-2025:1');
 });
 
 test('fictional profiles produce preliminary, excluded and missing-information results', () => {

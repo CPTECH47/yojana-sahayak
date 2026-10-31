@@ -18,12 +18,13 @@ export function supportedRecords(passages) {
 }
 
 export function topicFor(question) {
-  if (/deadline|last date|open|closing|अंतिम|तारीख|कब तक/i.test(question)) return 'deadline';
-  if (/document|proof|कागज|दस्तावेज/i.test(question)) return 'documents';
-  if (/ekyc|e-kyc|केवाईसी/i.test(question)) return 'ekyc';
-  if (/apply|application|enrol|register|आवेदन|पंजीकरण/i.test(question)) return 'application';
-  if (/eligib|exclu|condition|qualif|who can|land|tax|age|income|पात्र|शर्त|अपवाद|जमीन|आयु|उम्र|आयकर/i.test(question)) return 'conditions';
-  if (/benefit|amount|pay|pension|money|rupee|instal|kitn|paisa|लाभ|राशि|पैस|रुपय|पेंशन|किस्त/i.test(question)) return 'benefit';
-  if (/trade|occupation|ट्रेड|व्यवसाय/i.test(question)) return 'trades';
+  if (/deadline|last date|closing date|application dates?|open(?:ing)?|closing|अंतिम तारीख|अंतिम तिथि|कब तक|आखिरी तारीख|आखिरी तिथि/i.test(question)) return 'deadline';
+  if (/documents?|proofs?|papers?|what (?:do i|does .* need|is) .* (?:submit|provide)|कागज|दस्तावेज|प्रमाण पत्र|कौन से कागज़/i.test(question)) return 'documents';
+  if (/e[ -]?kyc|know your customer|केवाईसी/i.test(question)) return 'ekyc';
+  if (/apply|application|enrol(?:lment)?|register|registration|where .* apply|आवेदन|नामांकन|पंजीकरण|कैसे आवेदन|कहाँ आवेदन/i.test(question)) return 'application';
+  if (/eligib|exclu|condition|qualif|who can|who is eligible|requirement|land|tax|age|income|पात्र|योग्य|शर्त|अपवाद|जमीन|आयु|उम्र|आयकर|कौन पात्र|कौन ले सकता/i.test(question)) return 'conditions';
+  if (/benefit|amount|how much|how many instal|payment|pension|money|rupee|instal|kitn|paisa|लाभ|राशि|कितना मिलता|कितनी राशि|पैस|रुपय|पेंशन|किस्त|भुगतान/i.test(question)) return 'benefit';
+  if (/trade|occupation|craft|profession|व्यवसाय|पारंपरिक काम|ट्रेड|कारीगरी/i.test(question)) return 'trades';
+  if (/what is|what does|tell me about|explain|overview|purpose|objective|scheme for|about this scheme|क्या है|क्या योजना|किस लिए|किसके लिए|योजना बताइ|योजना के बारे में|उद्देश्य|लक्ष्य/i.test(question)) return 'overview';
   return null;
 }
