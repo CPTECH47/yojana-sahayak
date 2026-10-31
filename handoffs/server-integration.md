@@ -1,0 +1,57 @@
+# Server integration handoff
+
+## Integration of Tejas's PR #7
+
+- Integrated the hardening branch with the newer captain changes: retained bullet results, missing-question guidance, PMUY document link, and the 401 re-link instructions while adopting evidence locks, pinned answers, consent controls and message delivery safeguards from PR #7.
+- Updated the API contract and operation notes in `PROJECT_BRIEF.md` and `docs/HARDENING.md`. The chat response adds `mode` and `fact_ids`; recommendations can return `insufficient_evidence` without results when required evidence is unavailable. `/api/ready` reports separate model and corpus readiness.
+- Verified: 37 JavaScript tests, 4 isolated Python importer tests, production build and release gate on 31 October 2026 passed. The gate showed 10 usable documents. Two NMMSS records expire before 1 November and must be reviewed before claiming the minimum count afterwards.
+- A real paired-phone retest, actual model performance and a teammate check of the integrated journey remain outstanding. PR #7 must not be treated as live deployment proof.
+
+## Latest update: skipped answers and WhatsApp 401
+
+- Recommendation results now list skipped questions separately from failed checks and tell users how to restart with corrected answers. No alternative scheme or guaranteed path to eligibility is claimed.
+- The WhatsApp process explains the logged-out 401 and points to the re-linking instructions in `docs/WHATSAPP_FLOW.md`. Tejas reported the 401; a re-pair and live phone retest remain outstanding. Session files have not been changed.
+- Changed `server/whatsapp-flow.mjs`, `server/whatsapp-flow.test.mjs`, `server/whatsapp-prototype.mjs`, and `docs/WHATSAPP_FLOW.md`. API fields remain unchanged.
+- `npm.cmd test`: 22 passed; `npm.cmd run build` and `git diff --check`: passed. No live WhatsApp or model test was performed for this update.
+
+## Latest update: result guidance
+
+- WhatsApp recommendation results use bullets, explain the reported failed checks, offer a fresh check if an answer was incorrect, and direct users to official sources for full rules and documents. PMUY links to its official document list; other document lists remain to be reviewed. The bot does not promise that a person can become eligible by changing their circumstances.
+- The PM-KISAN profession question names the listed professions and requires registration and current practice. API consumers must use that meaning for `practising_registered_professional`.
+- Changed `server/whatsapp-flow.mjs`, `server/answer-service.mjs`, the WhatsApp flow tests, `PROJECT_BRIEF.md`, and `docs/TEAM_CHECKINS.md`. Pulkit and Tejas have concrete source-review and WhatsApp QA tasks in that team note.
+- `npm.cmd test`: 21 passed; `npm.cmd run build`: passed; `git diff --check`: passed. Paired-phone delivery and the official locator interaction need live verification.
+
+## Change summary
+
+- `YOJANA START` now returns a clearer bilingual welcome and language selector: “For Hindi, press 1” and “For English, press 2.”
+- Once language is selected, users can reply with just a role number, YES/NO, BACK, SKIP, or CANCEL while the questionnaire is active. The prefix remains required to start and for standalone scheme questions.
+- Invalid answers repeat the same question in the selected language. Farmers, families, and workers receive short questionnaires for selected PM-KISAN, PMUY, and PM-SYM rules. Student and artisan paths provide official information without claiming eligibility.
+- Answers stay in per-chat process memory and are cleared after completion or restart. The bot does not ask for Aadhaar or bank details.
+
+## Files changed
+
+- `server/whatsapp-flow.mjs`, `server/whatsapp-flow.test.mjs`
+- `server/whatsapp-prototype.mjs`, `server/yojana-answer.mjs`, `server/yojana-answer.test.mjs`
+- `server/answer-service.mjs`, `server/answer-service.test.mjs`
+- `README.md`, `PROJECT_BRIEF.md`, `docs/WHATSAPP_FLOW.md`
+- `server/corpus.mjs`, `server/corpus.test.mjs`
+- `corpus/manifest.json`, `corpus/passages.json`
+- `README.md`, `PROJECT_BRIEF.md`, `docs/SOURCE_GOVERNANCE.md`, `docs/WHATSAPP_FLOW.md`, `.gitignore`
+
+## Commands and results
+
+- `npm.cmd test` — 20/20 passed.
+- `npm.cmd run build` — passed.
+- `git diff --check` — passed.
+
+## Unfinished and unverified
+
+- The updated welcome and multi-turn questionnaire have not yet been retested on the paired WhatsApp phone.
+- Live Qwen answers, message delivery, and opening cited links from WhatsApp remain unverified.
+- Language choice is session-only and is not persisted to Supabase.
+- Checks cover selected conditions only; they are preliminary and are not government eligibility decisions.
+
+## API and handoff fields
+
+- WhatsApp integration calls `answers.chat({ question, language })`, where language is `hi` or `en`.
+- Answer citations retain `title`, `locator`, and `url`; no `/api/chat` or `/api/recommend` response fields changed in this update.

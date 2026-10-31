@@ -1,24 +1,116 @@
 # Yojana Sahayak
 
-A student prototype for source-cited government-scheme questions and preliminary matching. It is independent of the Government of India. The official hackathon core is still in progress: the current corpus contains **3 of the required 10–20 documents**.
+A WhatsApp-first assistant that helps people understand government schemes and explore which schemes may fit their situation. It answers in Hindi and English using reviewed public sources, explains preliminary questionnaire results, and links to the evidence. This is an independent student prototype, not an official government service.
 
-## What runs today
+## Problem statement
 
-- React/Vite practice screen and Express health, chat and recommendation APIs.
-- Three sourced pilot documents: PM-KISAN operational guidelines, a February 2026 Agriculture Ministry release, and an October 2026 Education Ministry release on NMMSS. Their URLs, snapshots and extracted passages are in `corpus/`. The user's supplied government-link directory is used for discovery; each actual document is verified separately. PIB releases are additional official sources.
-- Local Qwen (`qwen3:4b`) drafts answers from retrieved passages; the server checks selected citation IDs and numeric claims before returning them. This is a limited safeguard, not a guarantee of factual correctness.
-- The existing prefixed Baileys WhatsApp text route and a fictional PM-KISAN diagnostic command. Baileys is an unofficial WhatsApp Web integration; use a consenting test account and a dedicated number for a wider demo.
+India has many welfare, scholarship, and agriculture schemes, but their eligibility rules can be difficult to find and understand. Yojana Sahayak turns public scheme documents into short, cited answers and uses a brief questionnaire to suggest possible matches.
 
-## Setup on Windows
+## Solution
 
-1. Install Node.js 20.19+ and Ollama. Run `ollama pull qwen3:4b` if the model is missing.
-2. Run `npm.cmd ci` and `npm.cmd run build`.
-3. Start Ollama, then run `npm.cmd start`; open `http://localhost:3000/api/health`.
-4. To test chat, POST JSON to `/api/chat`; to test fictional matching, POST JSON to `/api/recommend`. The API shapes are in [PROJECT_BRIEF.md](PROJECT_BRIEF.md).
-5. For a consenting WhatsApp test, run `node server/whatsapp-prototype.mjs` and follow the local pairing instructions. Send `YOJANA START` from a second account. Stop the process when the test ends. Never share `server/.baileys-auth/`.
+The assistant retrieves relevant passages, asks the local model to select pinned answer records, and renders their reviewed text with exact evidence citations. It never renders free-form model prose. With the model offline it offers a labelled extractive fallback. Questions outside the bounded records clarify or abstain. Matching requires every pinned supporting rule passage.
 
-To rebuild source passages, install `requirements-ingest.txt` in a Python environment and run `python scripts/ingest_sources.py`. Review new passages before using them for answers. Do not collect beneficiary identifiers or commit real conversations.
+The audit repairs live on `codex/project-hardening` pending captain review. Check out that branch explicitly for these changes. Read [the repair and rollout guide](docs/HARDENING.md) before running or releasing it.
 
-## Verified versus pending
+## Demo journey
 
-The source importer, local build and selected API behavior have automated checks. Live WhatsApp text was reported and tested in the earlier prototype, but has not yet been retested from this new repository. Voice input/output, Punjabi quality, Supabase scheme storage, public deployment and the 10–20-document corpus remain pending. A potential match is not a government approval.
+1. A user sends `YOJANA START` in a direct WhatsApp chat.
+2. The bot welcomes them and asks them to choose Hindi (`1`) or English (`2`).
+3. The user chooses a role and answers a few scheme-specific questions. Invalid answers are asked again; the user can go back, skip, or cancel.
+4. The bot returns a preliminary result with a short reason and source links, or gives relevant information without claiming eligibility where reviewed rules are not available.
+5. The user can ask a scheme question; the bot answers from retrieved evidence and cites its source.
+
+Tapping a citation opens the official source. Some sources open as long PDF documents; the message includes the cited page so the user can locate the supporting section. Recommendation replies also offer the [official CSC locator](https://locator.csccloud.in/) for people seeking in-person help; users select their area there. The bot does not automatically find or verify the nearest centres.
+
+## Current features
+
+- Hindi and English language selection and a role-based WhatsApp text journey.
+- Evidence-based answers from ten reviewed official documents and pages.
+- Source citations with title, URL, and page or section locator. Additional review metadata is recorded in the corpus manifest.
+- Insufficient-evidence responses instead of unsupported answers.
+- Preliminary selected-condition checks for PM-KISAN, PMUY, and PM-SYM.
+- Student and artisan information leads without unsupported eligibility claims.
+- Express endpoints for chat, recommendations, health, and the Supabase practice read.
+- Local Qwen (`qwen3:4b`) for selecting retrieved, pinned answer records.
+- Explicit SAVE/RESUME profile consent, separate update consent and STOP/DELETE controls.
+- A durable local update queue, per-chat ordering and duplicate detection. Update sending is off by default.
+
+## Demo status and limitations
+
+This repository contains a local prototype; no public production URL is documented here. The repaired flow needs a paired-phone retest. Real model selection requires Ollama and `qwen3:4b`; a labelled extractive fallback remains available without them. Matching checks selected conditions and does not confirm government eligibility. Run `npm run check:release` for the current evidence count: ten sources are usable on 31 October 2026, but two expire before 1 November unless reviewed again.
+
+The corpus is an initial quality-controlled set, not comprehensive coverage of all Indian schemes. Student and artisan flows are information-only. Supabase scheme storage, public deployment, live CSC results, automatic nearest-centre lookup, voice, and scheduled source monitoring are not implemented or verified. The CSC link is a manual link-out; users select their state, district, or other area details on the official locator.
+
+## Technology
+
+| Area | Technology |
+| --- | --- |
+| WhatsApp connection | Node.js and Baileys |
+| API | Express |
+| Web reference interface | React and Vite |
+| Answer generation | Local Ollama with Qwen 3 4B |
+| Evidence | Reviewed public scheme documents and source manifest |
+| Optional practice database check | Supabase |
+| Checks | Node test runner and Vite production build |
+
+## Sources and answer safety
+
+The corpus records source URLs, authorities, verification dates, hashes, status, and page or section locators in `corpus/manifest.json` and `corpus/passages.json`. myScheme, India.gov.in, and data.gov.in are used for discovery and change detection; eligibility answers rely on approved evidence from the issuing ministry or official programme source.
+
+The server excludes unapproved, expired or altered passages. A model can choose only supported fact IDs; the stored English/Hindi text supplies the final amount, period and conditions. The bounded records can still be incomplete or imperfectly selected, and source review remains necessary. Users should verify consequential decisions with the issuing authority. The assistant must not request Aadhaar numbers, bank details, or other beneficiary identifiers.
+
+## Run locally on Windows
+
+Requirements: Node.js 20.19 or newer, npm, and Ollama for generated chat answers.
+
+```powershell
+npm.cmd ci
+npm.cmd run build
+ollama pull qwen3:4b
+```
+
+Start Ollama, then start the app:
+
+```powershell
+npm.cmd start
+```
+
+Open `http://localhost:3000/api/health`. The API contract and request fields are documented in [PROJECT_BRIEF.md](PROJECT_BRIEF.md). Run the checks with:
+
+```powershell
+npm.cmd test
+npm.cmd run build
+```
+
+## Run the WhatsApp prototype
+
+Use a consenting test account. From the project root, run:
+
+```powershell
+node server/whatsapp-prototype.mjs
+```
+
+Follow the pairing instructions and keep the process running. After the terminal reports `WhatsApp connected`, send `YOJANA START` from a second WhatsApp account in a direct chat. The prefix is required to start and for standalone questions; replies inside an active questionnaire can be sent without it. Stop the process when testing ends. Never share or commit `server/.baileys-auth/`.
+
+Baileys connects through WhatsApp Web and is not an official WhatsApp Business API integration. Use a dedicated demo number if one is available and tested.
+
+## API overview
+
+- `POST /api/chat` accepts a question and optional language or scheme ID. It returns an answer status, answer text, and citations.
+- `POST /api/recommend` accepts a language and a profile containing scheme-specific questionnaire answers. It returns preliminary results, missing fields, reasons, citations, and `official_decision: false`.
+- `GET /api/health` reports service health and the number of approved corpus documents.
+- `GET /api/prep-status` checks the separate Supabase practice table when Supabase variables are configured.
+
+See [PROJECT_BRIEF.md](PROJECT_BRIEF.md) for exact request and response fields.
+
+## Configuration and repository hygiene
+
+Keep credentials in local environment variables or the hosting provider’s secret settings. Never commit `.env`, Baileys session files, Supabase secret or service-role keys, or real user data. Browser code must not contain a Supabase secret key. `.env.example` contains placeholders only.
+
+To fetch review candidates, install `requirements-ingest.txt` in a Python environment and use `python scripts/ingest_sources.py --fetch SOURCE_ID`. No-argument invocation only prints help. A separate reviewer-authored approval file is required to publish. See [the repair guide](docs/HARDENING.md) for pinning, private state, alert controls, API authentication and release checks.
+
+## Further documentation
+
+- [Project brief and API contract](PROJECT_BRIEF.md)
+- [WhatsApp journey and evidence safeguards](docs/WHATSAPP_FLOW.md)
+- [Source review and update policy](docs/SOURCE_GOVERNANCE.md)

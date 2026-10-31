@@ -30,13 +30,27 @@ const replies = {
   }
 };
 
-export function answerMatch(text) {
+export function answerMatch(text, language = 'en') {
   const parts = text.trim().toLowerCase().split(/\s+/);
   if (parts[0] !== 'match' || parts.length !== 4 || parts.slice(1).some(value => !['yes', 'no'].includes(value))) {
-    return 'For a sample PM-KISAN check, send: MATCH yes no no\nThe answers mean: owns cultivable land; family paid income tax last assessment year; practising registered professional. Use fictional answers for this test.';
+    return language === 'hi'
+      ? 'PM-KISAN के शुरुआती नमूना-जाँच के लिए भेजें: MATCH yes no no\nउत्तर का क्रम: परिवार के पास खेती योग्य जमीन है; पिछले आकलन वर्ष में परिवार के किसी सदस्य ने आयकर दिया; परिवार का कोई पंजीकृत पेशेवर अपना पेशा कर रहा है। केवल काल्पनिक उत्तर दें।'
+      : 'For a sample PM-KISAN check, send: MATCH yes no no\nThe answers mean: owns cultivable land; family paid income tax last assessment year; practising registered professional. Use fictional answers for this test.';
   }
   const [ownsCultivableLand, paidIncomeTaxLastYear, practisingRegisteredProfessional] = parts.slice(1).map(value => value === 'yes');
   const result = assessPmkisan({ ownsCultivableLand, paidIncomeTaxLastYear, practisingRegisteredProfessional });
+  if (language === 'hi') {
+    const reasons = result.reasons.map(reason => {
+      if (reason.startsWith('The published scheme is for landholding')) return 'योजना प्रकाशित नियमों के अनुसार जमीन रखने वाले किसान परिवारों के लिए है।';
+      if (reason.startsWith('The published exclusions include income-tax')) return 'प्रकाशित अपवादों में आयकर देने वाले शामिल हैं।';
+      if (reason.startsWith('The published exclusions include practising')) return 'प्रकाशित अपवादों में पेशे में कार्यरत पंजीकृत पेशेवर शामिल हैं।';
+      return 'आपके उत्तर इन तीन चुनी हुई जाँचों में सही हैं; अन्य आधिकारिक अपवादों की जाँच बाकी है।';
+    });
+    const summary = result.status === 'possible_match_check_full_guidelines'
+      ? 'इन तीन जाँचों में संभावित मेल है; पूरी पात्रता की पुष्टि नहीं हुई।'
+      : 'चुनी हुई एक या अधिक जाँचों में मेल नहीं हुआ।';
+    return `${summary}\n${reasons.join(' ')}\nयह सरकारी निर्णय नहीं है।\nस्रोत: ${source.url}`;
+  }
   const summary = result.status === 'possible_match_check_full_guidelines' ? 'Possible match on these three checks; full eligibility is not confirmed.' : 'Does not match one or more of these selected checks.';
   return `${summary}\n${result.reasons.join(' ')}\nSource: ${source.url}`;
 }
