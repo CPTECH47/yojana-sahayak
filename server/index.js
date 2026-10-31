@@ -4,7 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAnswerService } from './answer-service.mjs';
-import { loadPassages } from './corpus.mjs';
+import { loadPassages, schemes } from './corpus.mjs';
+import { supportedRecords } from './verified-facts.mjs';
 import { timingSafeEqual } from 'node:crypto';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -13,7 +14,7 @@ const app = express();
 app.disable('x-powered-by');
 const windows=new Map();let active=0;
 app.use('/api',(request,response,next)=>{
-  if(token){
+  if(token && !(request.method==='GET' && request.path==='/catalog')){
     const supplied=Buffer.from(request.headers.authorization || ''),expected=Buffer.from('Bearer '+token);
     if(supplied.length!==expected.length || !timingSafeEqual(supplied,expected))return response.status(401).json({status:'error',reason_code:'unauthorized'});
   }
@@ -31,6 +32,19 @@ app.use('/api',(request,response,next)=>{
   next();
 });
 app.use(express.json({ limit: '32kb' }));
+
+// Public catalogue contains only records whose source is still approved and unexpired.
+app.get('/api/catalog', (_request, response) => {
+  try {
+    const passages = getPassages();
+    const byId = new Map(passages.map(p => [p.id, p]));
+    const records = supportedRecords(passages).map(r => {
+      const source = byId.get(r.evidence_id);
+      return { scheme_id:r.scheme_id, topics:r.topics, en:r.en, hi:r.hi, source:{ title:source.title, locator:source.locator, url:source.url } };
+    });
+    response.json({ schemes:Object.entries(schemes).map(([id, s]) => ({id,name:s.name})), records });
+  } catch { response.status(503).json({status:'error',reason_code:'corpus_unavailable'}); }
+});
 
 app.get('/api/health', (_request, response) => {
   try {response.json({ok:true,service:'yojana-sahayak',corpus_documents:new Set(getPassages().map(p=>p.document_id)).size});}

@@ -39,7 +39,7 @@ Tapping a citation opens the official source. Some sources open as long PDF docu
 
 This repository contains a local prototype; no public production URL is documented here. The repaired flow needs a paired-phone retest. Real model selection requires Ollama and `qwen3:4b`; a labelled extractive fallback remains available without them. Matching checks selected conditions and does not confirm government eligibility. Run `npm run check:release` for the current evidence count: ten sources are usable on 31 October 2026, but two expire before 1 November unless reviewed again.
 
-The corpus is an initial quality-controlled set, not comprehensive coverage of all Indian schemes. Student and artisan flows are information-only. Supabase scheme storage, public deployment, live CSC results, automatic nearest-centre lookup, voice, and scheduled source monitoring are not implemented or verified. The CSC link is a manual link-out; users select their state, district, or other area details on the official locator.
+The corpus is an initial quality-controlled set, not comprehensive coverage of all Indian schemes. Student and artisan flows are information-only. Supabase scheme storage, public deployment, live CSC results, automatic nearest-centre lookup, and scheduled source monitoring are not implemented or verified. An opt-in local voice-question path has been added but still requires model installation and a real-phone test. The CSC link is a manual link-out; users select their state, district, or other area details on the official locator.
 
 ## Technology
 
@@ -94,10 +94,24 @@ Follow the pairing instructions and keep the process running. After the terminal
 
 Baileys connects through WhatsApp Web and is not an official WhatsApp Business API integration. Use a dedicated demo number if one is available and tested.
 
+## Website and experimental voice questions
+
+After `npm.cmd run build` and `npm.cmd start`, open `http://127.0.0.1:3000/`. The scheme directory reads public reviewed facts from `/api/catalog`; unavailable or expired evidence is excluded. Its WhatsApp links open a prepared `YOJANA START` message to the configured prototype number; the visitor must press Send. The CSC locator remains a manual link.
+
+The experimental voice flow requires Python, FFmpeg on the system PATH, and the optional local dependencies:
+
+```powershell
+python -m venv .runtime\voice-venv
+.\.runtime\voice-venv\Scripts\python.exe -m pip install -r requirements-voice.txt
+```
+
+Restart the bot after installation. In a direct test chat send `YOJANA VOICE`, then one voice question shorter than one minute. The local faster-whisper `small` model is downloaded on first use; this can take time and needs internet for the model download. The bot presents the transcription and only sends it to the answer service after `YOJANA CONFIRM`. Use `YOJANA CANCEL` if it is incorrect. The current experimental path handles Hindi and English text answers only, and refuses uncertain speech or other detected languages. It does not create voice audio replies. Voice bytes are passed to the local worker in memory. Never send personal identifiers or financial details in recordings. Phone, language accuracy and latency must be verified on the actual device.
+
 ## API overview
 
 - `POST /api/chat` accepts a question and optional language or scheme ID. It returns an answer status, answer text, and citations.
 - `POST /api/recommend` accepts a language and a profile containing scheme-specific questionnaire answers. It returns preliminary results, missing fields, reasons, citations, and `official_decision: false`.
+- `GET /api/catalog` returns public scheme names and pinned facts only when their supporting passages are approved and unexpired. The endpoint remains public when the API token is configured; rate limits still apply.
 - `GET /api/health` reports service health and the number of approved corpus documents.
 - `GET /api/prep-status` checks the separate Supabase practice table when Supabase variables are configured.
 

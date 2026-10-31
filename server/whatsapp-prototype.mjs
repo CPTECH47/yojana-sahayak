@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import makeWASocket, { DisconnectReason, fetchLatestWaWebVersion, useMultiFileAuthState } from '@whiskeysockets/baileys';
+import makeWASocket, { DisconnectReason, downloadMediaMessage, fetchLatestWaWebVersion, useMultiFileAuthState } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
 import QRCode from 'qrcode';
 import pino from 'pino';
@@ -12,18 +12,28 @@ import { createWhatsAppConversation } from './whatsapp-flow.mjs';
 import { openLocalStore } from './local-store.mjs';
 import { createDelivery } from './delivery.mjs';
 import { scanReviewedUpdates, deliverReviewedAlerts } from './alerts.mjs';
+import { transcribeVoice } from './voice.mjs';
+import { createVoiceFlow } from './voice-flow.mjs';
 
 const authDir = process.env.YOJANA_AUTH_DIR ? resolve(process.env.YOJANA_AUTH_DIR) : fileURLToPath(new URL('./.baileys-auth/', import.meta.url));
 const authLock = openLocalStore(join(authDir,'.owner'));
 const store = openLocalStore(resolve(process.env.YOJANA_STATE_DIR || '.runtime/whatsapp'));
 const answers = createAnswerService();
 const conversation = createWhatsAppConversation({ answers, store });
+const voice = createVoiceFlow({ answers, transcribe:transcribeVoice, fallback:conversation.handle });
+const pendingVoice = new Map();
 let currentSocket, reconnectTimer, stopped=false, attempts=0;
 const send=async(chat,text)=>{
   if(!currentSocket || stopped)throw Error('WhatsApp unavailable');
   await currentSocket.sendMessage(chat,{text});
 };
-const deliver=createDelivery({store,handle:conversation.handle,send});
+const deliver=createDelivery({store,handle:async (chat,text)=>{
+  if(text.startsWith('__VOICE_AUDIO__:')){
+    const key=text.slice('__VOICE_AUDIO__:'.length);const audio=pendingVoice.get(key);pendingVoice.delete(key);
+    return audio ? (await voice.handleAudio(chat,audio) || 'Voice session expired. Send YOJANA VOICE to try again.') : 'Voice message unavailable. Please try again.';
+  }
+  return voice.handle(chat,text);
+},send});
 const alertTimer=setInterval(async()=>{
   try {
     scanReviewedUpdates({store,answers});
@@ -91,14 +101,32 @@ async function start() {
       if (message.key.fromMe || !jid || jid.endsWith('@g.us') || !id) continue;
       const rawText = messageText(message);
       const command = demoCommand(rawText);
-      if (command === null && !conversation.acceptsBareQuestionnaireReply(jid, rawText)) continue;
-      const text = command ?? rawText.trim();
+      const content=message.message?.ephemeralMessage?.message ?? message.message;
+      const audio=content?.audioMessage;
+      let text;
+      if(audio && voice.acceptsAudio(jid)){
+        const length=Number(audio.fileLength), seconds=Number(audio.seconds);
+        if(!Number.isFinite(length) || length<1 || length>10*1024*1024 || !Number.isFinite(seconds) || seconds>60){
+          await socket.sendMessage(jid,{text:'Please send a voice question shorter than one minute.'}); continue;
+        }
+        try {
+          const bytes=await downloadMediaMessage(message,'buffer',{}, {logger:pino({level:'silent'}),reuploadRequest:socket.updateMediaMessage});
+          if(!Buffer.isBuffer(bytes) || bytes.length>10*1024*1024)throw Error();
+          const key=store.id(jid+':'+id);pendingVoice.set(key,bytes);text='__VOICE_AUDIO__:'+key;
+        } catch {await socket.sendMessage(jid,{text:'Voice download failed. Please try again or send a text question.'});continue;}
+      } else {
+        if (command === null && !conversation.acceptsBareQuestionnaireReply(jid, rawText)) continue;
+        text = command ?? rawText.trim();
+      }
       if(text.length>1000)continue;
       try {
         const status=await deliver(jid,id,text);
+        if(text.startsWith('__VOICE_AUDIO__:'))pendingVoice.delete(text.slice('__VOICE_AUDIO__:'.length));
         console.log('WhatsApp message processing: '+status);
       } catch (error) {
         console.error('WhatsApp message processing failed.');
+      } finally {
+        if(text.startsWith('__VOICE_AUDIO__:'))pendingVoice.delete(text.slice('__VOICE_AUDIO__:'.length));
       }
     }
   });

@@ -44,6 +44,15 @@ test('missing or changed rule evidence prevents recommendations',()=>{
  }
  assert.equal(createAnswerService({passages}).recommend({profile:{scheme_id:'__proto__'}}).status,'invalid_request');
 });
+test('a missing PAN card question is not answered from a generic application passage',async()=>{
+  for(const model of [async()=>({fact_ids:['pmuy-faq:2']}),async()=>{throw Error('offline');}]){
+    const service=createAnswerService({passages,model});
+    const english=await service.chat({question:'Can I apply for PMUY without a PAN card?',language:'en'});
+    const hindi=await service.chat({question:'क्या मैं पैन कार्ड के बिना PMUY के लिए आवेदन कर सकता हूँ?',language:'hi'});
+    assert.equal(english.status,'insufficient_evidence');assert.equal(hindi.status,'insufficient_evidence');
+    assert.deepEqual(english.citations,[]);assert.deepEqual(hindi.citations,[]);
+  }
+});
 test('questions can interrupt a questionnaire; exclusions stop further unnecessary questions',async()=>{
  const service=createAnswerService({passages,model:async()=>({fact_ids:['pmkisan-home-2026:1']})});
  const flow=createWhatsAppConversation({answers:service,passages});

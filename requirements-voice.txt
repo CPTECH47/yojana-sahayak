@@ -1,0 +1,3 @@
+faster-whisper==1.2.1
+# Audio is decoded with FFmpeg before faster-whisper receives the waveform.
+av==19.0.2

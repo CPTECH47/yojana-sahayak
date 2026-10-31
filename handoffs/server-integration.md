@@ -1,5 +1,15 @@
 # Server integration handoff
 
+## Website and experimental voice
+
+- Added a bilingual, mobile-friendly scheme directory at `/` and a WhatsApp link using the owner's expressly approved personal number. The link opens a prepared message; the user sends it manually. Existing practice React entrypoint remains in `client/main.jsx`.
+- Added public, rate-limited `GET /api/catalog`. It exposes names and pinned bilingual facts only for passages returned by the approved, unexpired source filter; it is the only API exempted from a configured API token. Frontend uses exact source titles, locators and links. The bot and website link to the official CSC locator; no verified nearest-centre lookup was found. See `docs/MAP_RESEARCH.md`.
+- `YOJANA VOICE` starts an opt-in voice question. A local faster-whisper worker detects Hindi/English and asks the user to confirm the transcript; only then is it passed to the existing evidence-bound answer service. Audio responses and other languages remain unimplemented. The package and `small` model were installed locally. A synthetic English OGG test completed in about 3.9 seconds but misheard PM-KISAN as "PMK son", demonstrating why confirmation matters. Real Hindi/English voice accuracy, latency and live WhatsApp delivery still require verification. Incoming audio is not automatically accepted on the owner's personal number.
+- Added an explicit insufficient-evidence response for PAN-specific questions until scheme-specific evidence is reviewed. This guard does not prove every other answer is correct.
+- Pulkit's `data/supabase` branch at `b92c63d` has quarantined PMMVY and PM-JAY research with unresolved source conflicts; these have not been added to the public catalogue or eligibility rules.
+- Files: `client/scheme-site.jsx`, `client/scheme-site.css`, `index.html`, `server/index.js`, `server/catalog.test.mjs`, `server/voice*.mjs`, `server/whatsapp-prototype.mjs`, `server/answer-service.mjs`, `server/hardening.test.mjs`, `scripts/transcribe_voice.py`, `requirements-voice.txt`, `README.md`, `docs/WHATSAPP_FLOW.md`, `docs/MAP_RESEARCH.md`.
+- `npm.cmd test`: 41 passed; `npm.cmd run build`: passed. Hallmark render sweep: zero FAIL, one explicitly waived poster-spacing reflex; actual phone and speech model tests remain pending.
+
 ## Integration of Tejas's PR #7
 
 - Integrated the hardening branch with the newer captain changes: retained bullet results, missing-question guidance, PMUY document link, and the 401 re-link instructions while adopting evidence locks, pinned answers, consent controls and message delivery safeguards from PR #7.

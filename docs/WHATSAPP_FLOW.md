@@ -28,7 +28,9 @@ These controls lower risk, but they cannot guarantee that a language model never
 
 ## Not implemented yet
 
-This repository currently accepts text only in the Baileys route. Voice transcription/audio replies, current student eligibility matching, artisan eligibility matching, state-specific scheme matching and an automated document-change monitor are not running. The proposed monitor must quarantine changes for human review; it must never auto-approve new eligibility rules.
+An experimental opt-in Hindi/English voice-question path is available in code but is not yet verified on a phone. Send `YOJANA VOICE`, record a question and confirm the recognised text with `YOJANA CONFIRM`; use `YOJANA CANCEL` if wrong. Voice questions receive text answers only. A local faster-whisper installation and model are required. The first model download needs internet. Voice notes are only accepted after opt-in, kept in memory for transcription and are not applied as questionnaire facts.
+
+Audio replies, current student eligibility matching, artisan eligibility matching, state-specific scheme matching and an automated document-change monitor are not running. The proposed monitor must quarantine changes for human review; it must never auto-approve new eligibility rules.
 
 ## Re-linking after a 401
 

@@ -1,0 +1,32 @@
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+const script = fileURLToPath(new URL('../scripts/transcribe_voice.py', import.meta.url));
+const root = fileURLToPath(new URL('../', import.meta.url));
+const localPython = join(root, '.runtime', 'voice-venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+
+// Audio is piped to the local worker rather than written to the repository.
+export function transcribeVoice(audio, { python = process.env.YOJANA_VOICE_PYTHON || (existsSync(localPython) ? localPython : 'python'), timeoutMs = 120000 } = {}) {
+  if (!Buffer.isBuffer(audio) || !audio.length || audio.length > 10 * 1024 * 1024) return Promise.reject(new Error('Invalid audio'));
+  return new Promise((resolve, reject) => {
+    const child = spawn(python, [script], { stdio:['pipe','pipe','pipe'], windowsHide:true });
+    let output = '', settled = false;
+    const timer = setTimeout(() => { child.kill(); finish(new Error('Voice transcription timed out')); }, timeoutMs);
+    function finish(error, value) { if (settled) return; settled=true; clearTimeout(timer); error ? reject(error) : resolve(value); }
+    child.stdout.on('data', chunk => { output += chunk.toString('utf8'); if (output.length > 8192) { child.kill(); finish(new Error('Invalid transcription')); } });
+    child.stderr.resume(); // Never log potentially sensitive voice data.
+    child.on('error', error => finish(error));
+    child.on('close', code => {
+      if (code !== 0) return finish(new Error('Voice transcription unavailable'));
+      try {
+        const result=JSON.parse(output);
+        if (typeof result.text !== 'string' || !result.text.trim() || result.text.length > 1000 || !['hi','en'].includes(result.language) || !Number.isFinite(result.confidence) || result.confidence < 0.7) throw Error();
+        finish(null, { text:result.text.trim(), language:result.language });
+      } catch { finish(new Error('Speech could not be identified reliably')); }
+    });
+    child.stdin.on('error', () => {});
+    child.stdin.end(audio);
+  });
+}

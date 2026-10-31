@@ -28,6 +28,9 @@ export function createAnswerService({ passages, model=askModel, now=()=>new Date
     if (requested && !Object.hasOwn(schemes,requested)) return failure('unknown_scheme',language);
     const schemeId=requested || schemeFromText(question);
     if (!schemeId) return {status:'clarify',language,scheme_id:null,reason_code:'choose_scheme',citations:[],answer_text:language==='hi'?'कृपया योजना का नाम बताएँ: PM-KISAN, PMUY, PM-SYM, PM Vishwakarma या NMMSS।':'Please name a covered scheme: PM-KISAN, PMUY, PM-SYM, PM Vishwakarma, or NMMSS.'};
+    // A general application fact cannot answer whether a particular missing document is allowed.
+    // Revisit only after a scheme-specific exception is reviewed and pinned.
+    if (/\bpan(?:\s+card)?\b|permanent account number|पैन/u.test(question.toLocaleLowerCase())) return failure('no_evidence',language,schemeId);
     const topic=topicFor(question);
     if (!topic) return {status:'clarify',language,scheme_id:schemeId,reason_code:'missing_intent',citations:[],answer_text:language==='hi'?schemes[schemeId].name+' के लाभ, शर्तें, दस्तावेज़ या आवेदन के बारे में क्या जानना चाहेंगे?':'What would you like to know about '+schemes[schemeId].name+': benefits, conditions, documents, or application?'};
     const available=getPassages();

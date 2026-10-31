@@ -120,8 +120,8 @@ function formatRecommendation(result, language) {
     ? 'यह शुरुआती जाँच है, सरकारी निर्णय नहीं। पूरी शर्तें आधिकारिक पोर्टल या स्थानीय कार्यालय से जाँचें।'
     : 'Preliminary check only, not an official decision. Verify the full rules with the official portal or local office.';
   const csc = language === 'hi'
-    ? 'पास का Common Service Centre खोजें: https://locator.csccloud.in/ (वहाँ अपना क्षेत्र चुनें; सेवाएँ केंद्र के अनुसार अलग हो सकती हैं)।'
-    : 'Need in-person help? Find a Common Service Centre: https://locator.csccloud.in/ (select your area there; services vary by centre).';
+    ? 'Common Service Centre (CSC) खोजें: https://locator.csccloud.in/ या नक्शा: https://findmycsc.nic.in/csc/ । वहाँ अपना क्षेत्र चुनें; सेवाएँ केंद्र के अनुसार अलग हो सकती हैं।'
+    : 'Find in-person help: https://locator.csccloud.in/ or the CSC map: https://findmycsc.nic.in/csc/ (select your area there; services vary by centre).';
   const next = item.status === 'not_matched'
     ? (language === 'hi' ? '• अगला कदम: यदि कोई जवाब गलत था, YOJANA START भेजकर सही जानकारी के साथ फिर जाँचें। नियमों और अन्य योजनाओं के लिए आधिकारिक कार्यालय से पूछें।' : '• Next: If an answer was wrong, send YOJANA START and check again with correct details. Ask the official office about the rules and other schemes.')
     : (language === 'hi' ? '• अगला कदम: छूटे हुए जवाब देने या सुधारने के लिए YOJANA START भेजें। आवेदन से पहले आधिकारिक नियम जाँचें।' : '• Next: Send YOJANA START to supply or correct answers. Check the official rules before applying.');
