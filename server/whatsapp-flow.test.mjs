@@ -54,6 +54,7 @@ test('family questionnaire recommends PMUY only as a preliminary match with its 
   assert.match(result, /PMUY/u);
   assert.match(result, /संभावित मेल/u);
   assert.match(result, /pmuy.gov.in\/ujjwala2.html/u);
+  assert.match(result, /आवश्यक दस्तावेज़/u);
   assert.match(result, /Common Service Centre/u);
   assert.match(result, /locator\.csccloud\.in/u);
   assert.equal(calls[0].profile.scheme_id, 'pmuy');
@@ -86,6 +87,8 @@ test('recommendation reply keeps a short summary, groups repeated source pages, 
   assert.equal((result.match(/Source:/gu) || []).length, 1);
   assert.match(result, /locator\.csccloud\.in/u);
   assert.match(result, /select your area there/u);
+  assert.match(result, /If an answer was wrong/u);
+  assert.match(result, /Required documents/u);
   assert.doesNotMatch(result, /Confirm with the official scheme portal or help desk/u);
 });
 

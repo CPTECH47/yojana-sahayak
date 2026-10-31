@@ -96,7 +96,7 @@ export function createAnswerService({ passages, model = askModel } = {}) {
         failures: [
           ['owns_cultivable_land', false, 'No recorded cultivable landholding was confirmed.', 'खेती योग्य जमीन रखने की पुष्टि नहीं हुई।'],
           ['income_tax_payer_last_year', true, 'Income tax was paid in the last assessment year.', 'पिछले आकलन वर्ष में परिवार के किसी सदस्य ने आयकर दिया।'],
-          ['practising_registered_professional', true, 'A registered professional is practising.', 'परिवार का कोई पंजीकृत पेशेवर अपना पेशा कर रहा है।'],
+          ['practising_registered_professional', true, 'A farmer-family member was reported as a registered and practising doctor, engineer, lawyer, chartered accountant or architect.', 'किसान परिवार का कोई सदस्य पंजीकृत और कार्यरत डॉक्टर, इंजीनियर, वकील, चार्टर्ड अकाउंटेंट या आर्किटेक्ट बताया गया।'],
           ['other_official_exclusion', true, 'Another official exclusion was reported.', 'एक अन्य आधिकारिक अपवाद लागू बताया गया।'],
         ],
       },

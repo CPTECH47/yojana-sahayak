@@ -35,7 +35,7 @@ const questionSets = {
   farmer: [
     { key: 'owns_cultivable_land', en: 'Does your farmer family own cultivable land?', hi: 'क्या आपके किसान परिवार के पास खेती योग्य जमीन है?' },
     { key: 'income_tax_payer_last_year', en: 'Did anyone in the family pay income tax in the last assessment year?', hi: 'क्या पिछले आकलन वर्ष में परिवार के किसी सदस्य ने आयकर दिया था?' },
-    { key: 'practising_registered_professional', en: 'Is anyone in the family a registered professional currently practising that profession?', hi: 'क्या परिवार का कोई पंजीकृत पेशेवर अभी अपना पेशा कर रहा है?' },
+    { key: 'practising_registered_professional', en: 'Is anyone in your farmer family a doctor, engineer, lawyer, chartered accountant or architect registered with a professional body and currently practising?', hi: 'क्या आपके किसान परिवार में कोई डॉक्टर, इंजीनियर, वकील, चार्टर्ड अकाउंटेंट या आर्किटेक्ट किसी पेशेवर संस्था में पंजीकृत है और अभी अपना पेशा कर रहा है?' },
     { key: 'other_official_exclusion', en: 'Does any other PM-KISAN exclusion in the official guidelines apply? If unsure, skip.', hi: 'क्या PM-KISAN के सरकारी नियमों का कोई अन्य अपवाद लागू होता है? पता न हो तो SKIP लिखें।' },
   ],
   family: [
@@ -116,7 +116,13 @@ function formatRecommendation(result, language) {
   const csc = language === 'hi'
     ? 'पास का Common Service Centre खोजें: https://locator.csccloud.in/ (वहाँ अपना क्षेत्र चुनें; सेवाएँ केंद्र के अनुसार अलग हो सकती हैं)।'
     : 'Need in-person help? Find a Common Service Centre: https://locator.csccloud.in/ (select your area there; services vary by centre).';
-  return `${item.scheme_name}\n${status}${explanation ? `\n${explanation}` : ''}\n${note}${sources ? `\n${sources}` : ''}\n${csc}`;
+  const next = item.status === 'not_matched'
+    ? (language === 'hi' ? '• अगला कदम: यदि कोई जवाब गलत था, YOJANA START भेजकर सही जानकारी के साथ फिर जाँचें। नियमों और अन्य योजनाओं के लिए आधिकारिक कार्यालय से पूछें।' : '• Next: If an answer was wrong, send YOJANA START and check again with correct details. Ask the official office about the rules and other schemes.')
+    : (language === 'hi' ? '• अगला कदम: आवेदन से पहले पूरी शर्तें और दस्तावेज़ आधिकारिक स्रोत से जाँचें।' : '• Next: Check the full rules and required documents with the official source before applying.');
+  const documents = item.scheme_id === 'pmuy'
+    ? (language === 'hi' ? '• आवश्यक दस्तावेज़: PMUY की आधिकारिक सूची देखें: https://pmuy.gov.in/ujjwala2.html' : '• Required documents: See the official PMUY list: https://pmuy.gov.in/ujjwala2.html')
+    : (language === 'hi' ? '• आवश्यक दस्तावेज़: आधिकारिक योजना पोर्टल या कार्यालय से सूची की पुष्टि करें।' : '• Required documents: Confirm the list with the official scheme portal or office.');
+  return `*${item.scheme_name}*\n• ${status}${explanation ? `\n${explanation}` : ''}\n• ${note}\n${next}\n${documents}${sources ? `\n• ${sources.replaceAll('\n', '\n• ')}` : ''}\n• ${csc}`;
 }
 
 function infoOnly(role, language, passages) {

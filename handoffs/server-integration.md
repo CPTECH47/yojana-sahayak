@@ -1,5 +1,12 @@
 # Server integration handoff
 
+## Latest update: result guidance
+
+- WhatsApp recommendation results use bullets, explain the reported failed checks, offer a fresh check if an answer was incorrect, and direct users to official sources for full rules and documents. PMUY links to its official document list; other document lists remain to be reviewed. The bot does not promise that a person can become eligible by changing their circumstances.
+- The PM-KISAN profession question names the listed professions and requires registration and current practice. API consumers must use that meaning for `practising_registered_professional`.
+- Changed `server/whatsapp-flow.mjs`, `server/answer-service.mjs`, the WhatsApp flow tests, `PROJECT_BRIEF.md`, and `docs/TEAM_CHECKINS.md`. Pulkit and Tejas have concrete source-review and WhatsApp QA tasks in that team note.
+- `npm.cmd test`: 21 passed; `npm.cmd run build`: passed; `git diff --check`: passed. Paired-phone delivery and the official locator interaction need live verification.
+
 ## Change summary
 
 - `YOJANA START` now returns a clearer bilingual welcome and language selector: “For Hindi, press 1” and “For English, press 2.”
