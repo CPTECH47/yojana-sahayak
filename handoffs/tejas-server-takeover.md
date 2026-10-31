@@ -22,4 +22,16 @@ Live Qwen extraction, actual Sarvam/Whisper audio, WhatsApp delivery and handset
 
 ## Follow-on request
 
-The user requested national-scheme matching across multiple schemes and a daily official-source discovery job. This extension is being developed separately from the profile-fix commit. Newly discovered information must be reviewed before it enters the answer corpus or eligibility rules.
+The user requested national-scheme matching across multiple schemes and a daily official-source discovery job for all five roles. The extension adds `YOJANA SCHEMES`, shared question definitions, a ranked multi-profile form of `/api/recommend`, a discovery registry, source-observation script and daily GitHub workflow. Newly discovered information must be reviewed before it enters the answer corpus or eligibility rules. See `docs/MULTI_SCHEME_AND_DAILY_REVIEW.md` for contracts and source-review steps.
+
+The matching layer currently evaluates reviewed PM-KISAN, PM-SYM and PMUY conditions. Student and artisan journeys also surface approved NMMSS or PM Vishwakarma information citations when available. Their dedicated matching rules and newly researched farmer programmes are pending review. Result counts describe selected conditions met/failed/unknown rather than approval probabilities.
+
+## Expanded-flow validation
+
+- Full JavaScript suite passed 93/93; Python importer/monitor suite passed 7/7. Build and whitespace check passed.
+- Real localhost HTTP smoke passed for ranked multi-profile recommendations (200), invalid schemes (400), a Hindi cited extractive answer with the model deliberately unavailable, and unsupported-scheme refusal. This did not exercise a real LLM.
+- All five roles reached comparison through the normal conversation entry point in tests. Hindi controls, early exclusion, correction, BACK, skipped conditions and unavailable evidence are covered.
+- A real source-observation run inspected nine configured seeds, then the added current-PIB-releases seed. Seven produced readable baselines for review. PMFBY downloads, NSP scholarship listing and the Labour homepage returned no usable extracted text and were marked `extraction_failed`. No approved source or rule was changed.
+- The daily workflow schedules `30 0 * * *`, or 06:00 India time. It is active on main in `tejaspant09/yojana-sahayak-website`. The first cloud run completed its monitor tests and uploaded its report: https://github.com/tejaspant09/yojana-sahayak-website/actions/runs/41215272115 . It ended in failure because PM-KISAN raised SSLError and PM Vishwakarma timed out from the GitHub runner. Five other seeds gave readable baselines; the three locally unreadable seeds remained extraction failures. The report artifact and baseline cache were saved. This is a working schedule/report path with unresolved upstream access, not a claim that every source was checked successfully. The team-repository schedule starts after reaching its default branch.
+
+No live WhatsApp process was replaced or restarted. Manual phone checks must identify the deployed revision, then test Hindi/English, `YOJANA SCHEMES`, every role, missing/failed conditions, correction and source/CSC links. Confirm speech accuracy separately. Comparison state is session-only and is not wired to stored profiles or SMS delivery.

@@ -19,7 +19,9 @@ truststore.inject_into_ssl()
 ROOT = Path(__file__).resolve().parents[1]
 FIELDS = ["id","document_id","scheme_id","title","authority","url","published_at","verified_at","snapshot_sha256","locator","text"]
 HOSTS = {"pmkisan.gov.in","www.pib.gov.in","pib.gov.in","pmuy.gov.in","www.pmuy.gov.in",
-         "my.msme.gov.in","labour.gov.in","www.labour.gov.in","scholarships.gov.in"}
+         "my.msme.gov.in","labour.gov.in","www.labour.gov.in","scholarships.gov.in",
+         "pmfby.gov.in","www.pmfby.gov.in","pmvishwakarma.gov.in","www.pmvishwakarma.gov.in",
+         "www.myscheme.gov.in","myscheme.gov.in","www.india.gov.in","india.gov.in"}
 
 def read(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
@@ -35,13 +37,13 @@ def digest(p):
     value = json.dumps([p.get(key) for key in FIELDS], ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(value.encode()).hexdigest()
 
-def fetch(url, session=None, maximum=20_000_000):
+def fetch(url, session=None, maximum=20_000_000, timeout=30):
     session = session or requests.Session()
     for _ in range(6):
         parsed = urlparse(url)
         if parsed.scheme != "https" or parsed.hostname not in HOSTS or parsed.username or parsed.password or parsed.port not in (None,443):
             raise ValueError("Unapproved source or redirect")
-        response = session.get(url, timeout=30, allow_redirects=False, stream=True,
+        response = session.get(url, timeout=timeout, allow_redirects=False, stream=True,
                                headers={"User-Agent":"YojanaSahayakStudentPrototype/1.0"})
         try:
             if response.status_code in (301,302,303,307,308):

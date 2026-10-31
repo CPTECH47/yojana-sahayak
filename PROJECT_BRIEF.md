@@ -2,6 +2,8 @@
 
 **Captain and server integration:** Charchit. **Status:** working pilot under development.
 
+**National multi-scheme extension:** `YOJANA SCHEMES` starts a comparison for any of the five roles. The alternative `/api/recommend` request accepts a `profiles` array and returns ranked, cited results with condition counts and unavailable schemes. The single-profile contract remains supported. Exact API fields, current rule coverage and the daily review workflow are documented in [MULTI_SCHEME_AND_DAILY_REVIEW.md](docs/MULTI_SCHEME_AND_DAILY_REVIEW.md). New discoveries remain outside approved retrieval until reviewed.
+
 ## Official INNOVISTA problem 03
 
 Build an assistant that answers government-scheme questions in Hindi and English with a named source document, and helps a person find schemes they may qualify for. The minimum working version requires **10–20 public scheme documents**, runtime retrieval of relevant passages before answering, and a short eligibility questionnaire. A working prototype, live demo, readable source/setup instructions and future ideas are submission items. Use public or sample data and do not submit real personal information. Voice, more languages and a WhatsApp-style chat are bonus goals.

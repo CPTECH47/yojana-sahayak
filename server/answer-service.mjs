@@ -1,5 +1,6 @@
 import { loadPassages, retrieve, schemeFromText, schemes } from './corpus.mjs';
 import { supportedRecords, topicFor, ruleEvidenceMatches } from './verified-facts.mjs';
+import { compareProfiles } from './scheme-comparison.mjs';
 
 export async function askModel(messages, schema, fetchImpl = fetch) {
   const response = await fetchImpl(process.env.OLLAMA_URL || 'http://127.0.0.1:11434/api/chat', {
@@ -60,6 +61,7 @@ export function createAnswerService({ passages, model=askModel, now=()=>new Date
   }
   function recommend(input = {}) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) return {status:'invalid_request',results:[],reason_code:'invalid_profile'};
+    if (Object.hasOwn(input, 'profiles')) return compareProfiles(input, recommend);
     const { profile, language = 'en' } = input;
     if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return { status: 'invalid_request', results: [], reason_code: 'invalid_profile' };
     const lang = ['en', 'hi'].includes(language) ? language : 'en';

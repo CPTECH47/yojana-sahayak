@@ -1,3 +1,5 @@
+import { questionSets } from './scheme-questions.mjs';
+import { createSchemeComparison } from './scheme-comparison.mjs';
 import { loadPassages, schemeFromText } from './corpus.mjs';
 import { topicFor } from './verified-facts.mjs';
 import { memoryStore } from './local-store.mjs';
@@ -25,8 +27,8 @@ function languagePrompt(naturalFlow=false) {
 
 function rolePrompt(language, error = false) {
   const lead = error ? (language === 'hi' ? 'कृपया सूची में से एक विकल्प चुनें।\n' : 'Please choose one of the listed options.\n') : '';
-  if (language === 'hi') return `${lead}आपके लिए उपयोगी योजना जानकारी ढूँढने के लिए, अपना विकल्प चुनें:\n1 किसान\n2 विद्यार्थी\n3 कामगार\n4 कारीगर\n5 परिवार का सदस्य / अन्य नागरिक\n\nनीचे केवल विकल्प का नंबर भेजें।`;
-  return `${lead}Which best describes you? I’ll use this to find relevant scheme information.\n1 Farmer\n2 Student\n3 Worker\n4 Artisan or craft worker\n5 Family member / other citizen\n\nReply with the number.`;
+  if (language === 'hi') return `${lead}आपके लिए उपयोगी योजना जानकारी ढूँढने के लिए, अपना विकल्प चुनें:\n1 किसान\n2 विद्यार्थी\n3 कामगार\n4 कारीगर\n5 परिवार का सदस्य / अन्य नागरिक\n\nनीचे केवल विकल्प का नंबर भेजें। कई योजनाओं की तुलना के लिए YOJANA SCHEMES भेजें।`;
+  return `${lead}Which best describes you? I’ll use this to find relevant scheme information.\n1 Farmer\n2 Student\n3 Worker\n4 Artisan or craft worker\n5 Family member / other citizen\n\nReply with the number. Send YOJANA SCHEMES to compare several schemes.`;
 }
 
 function intro(language,naturalFlow=false) {
@@ -38,27 +40,7 @@ function intro(language,naturalFlow=false) {
     : 'Share only necessary details. Do not send Aadhaar, bank details, or ID numbers. This is not an official eligibility decision. Answers stay in this session; SAVE explicitly consents to saving them for 30 days.';
 }
 
-const questionSets = {
-  farmer: [
-    { key: 'owns_cultivable_land', en: 'Does your farmer family own cultivable land?', hi: 'क्या आपके किसान परिवार के पास खेती योग्य जमीन है?' },
-    { key: 'income_tax_payer_last_year', en: 'Did anyone in the family pay income tax in the last assessment year?', hi: 'क्या पिछले आकलन वर्ष में परिवार के किसी सदस्य ने आयकर दिया था?' },
-    { key: 'practising_registered_professional', en: 'Is anyone in your farmer family a doctor, engineer, lawyer, chartered accountant or architect registered with a professional body and currently practising?', hi: 'क्या आपके किसान परिवार में कोई डॉक्टर, इंजीनियर, वकील, चार्टर्ड अकाउंटेंट या आर्किटेक्ट किसी पेशेवर संस्था में पंजीकृत है और अभी अपना पेशा कर रहा है?' },
-    { key: 'other_official_exclusion', en: 'Does any other PM-KISAN exclusion in the official guidelines apply? If unsure, skip.', hi: 'क्या PM-KISAN के सरकारी नियमों का कोई अन्य अपवाद लागू होता है? पता न हो तो SKIP लिखें।' },
-  ],
-  family: [
-    { key: 'adult_woman_18_plus', en: 'Is the applicant a woman aged 18 or older?', hi: 'क्या आवेदक 18 वर्ष या उससे अधिक आयु की महिला हैं?' },
-    { key: 'household_has_existing_lpg', en: 'Does anyone in this household already have an LPG connection?', hi: 'क्या इस परिवार में किसी के नाम पहले से LPG कनेक्शन है?' },
-    { key: 'can_submit_deprivation_declaration', en: 'Can the applicant provide the required poor-household declaration?', hi: 'क्या आवेदक आवश्यक गरीब-परिवार घोषणा दे सकती हैं?' },
-  ],
-  worker: [
-    { key: 'age_18_to_40', en: 'Are you between 18 and 40 years old?', hi: 'क्या आपकी आयु 18 से 40 वर्ष के बीच है?' },
-    { key: 'monthly_income_at_most_15000', en: 'Is your monthly income ₹15,000 or less?', hi: 'क्या आपकी मासिक आय ₹15,000 या उससे कम है?' },
-    { key: 'unorganised_worker', en: 'Do you work in the unorganised sector?', hi: 'क्या आप असंगठित क्षेत्र में काम करते हैं?' },
-    { key: 'covered_by_epf_esic_nps', en: 'Are you covered by EPF, ESIC, or NPS?', hi: 'क्या आप EPF, ESIC या NPS के अंतर्गत आते हैं?' },
-    { key: 'income_tax_payer', en: 'Are you an income-tax payer?', hi: 'क्या आप आयकरदाता हैं?' },
-    { key: 'receives_other_government_pension', en: 'Do you receive another government pension?', hi: 'क्या आपको कोई दूसरी सरकारी पेंशन मिलती है?' },
-  ],
-};
+
 
 const roleNames = {
   farmer: { en: 'farmer', hi: 'किसान' },
@@ -154,6 +136,7 @@ function infoOnly(role, language, passages) {
 
 // Language and profile answers are kept per direct chat in process memory and cleared on completion/restart.
 export function createWhatsAppConversation({ answers, passages, store = memoryStore(), now = Date.now, naturalFlow = process.env.YOJANA_NATURAL_FLOW !== '0', extractProfile = extractProfileStatement, interpretAnswer = interpretQuestionAnswer }) {
+  const comparison = createSchemeComparison({ answers, now, passages: () => passages ?? loadPassages() });
   const languageByChat = new Map();
   const questionnaireByChat = new Map();
   const completedByChat = new Map();
@@ -232,12 +215,19 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   async function handle(chatId, text) {
     if (!chatId) throw new TypeError('A direct-chat identifier is required');
     if(typeof text!=='string' || text.length>1000)return 'Please send a short text question (up to 1000 characters).';
-    for(const [id,at] of touched)if(now()-at>86400000){touched.delete(id);languageByChat.delete(id);questionnaireByChat.delete(id);completedByChat.delete(id);lastSchemeByChat.delete(id);awaitingCsc.delete(id);awaitingCscOffer.delete(id);}
+    for(const [id,at] of touched)if(now()-at>86400000){touched.delete(id);comparison.clear(id);languageByChat.delete(id);questionnaireByChat.delete(id);completedByChat.delete(id);lastSchemeByChat.delete(id);awaitingCsc.delete(id);awaitingCscOffer.delete(id);}
     if(!touched.has(chatId) && touched.size>=2000)return 'The service is busy. Please try again later.';
     touched.set(chatId,now());
     const value = normalize(text);
     const state = questionnaireByChat.get(chatId);
     const language=languageByChat.get(chatId)||saved(chatId)?.language||'en';
+    if (['role', 'resume'].includes(value)) comparison.clear(chatId);
+    if (value === 'schemes') {
+      awaitingCsc.delete(chatId);
+      awaitingCscOffer.delete(chatId);
+      questionnaireByChat.set(chatId, { phase: 'comparison', language });
+      return comparison.handle(chatId, text, language);
+    }
     if (value === 'csc') {
       awaitingCscOffer.delete(chatId);
       awaitingCsc.set(chatId,now()+300000);
@@ -270,6 +260,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       }
     }
     if(value==='delete') {
+      comparison.clear(chatId);
       store.delete('profiles',store.id(chatId));
       for(const [key,a] of store.entries('alerts'))if(a.profile_id===store.id(chatId))store.delete('alerts',key);
       questionnaireByChat.delete(chatId);completedByChat.delete(chatId);languageByChat.delete(chatId);lastSchemeByChat.delete(chatId);awaitingCscOffer.delete(chatId);awaitingCsc.delete(chatId);moreSchemeByChat.delete(chatId);
@@ -306,12 +297,16 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     }
 
     if (isStart(text)) {
+      comparison.clear(chatId);
       awaitingCsc.delete(chatId);awaitingCscOffer.delete(chatId);lastSchemeByChat.delete(chatId);moreSchemeByChat.delete(chatId);
       languageByChat.delete(chatId);
       questionnaireByChat.set(chatId, { phase: 'language' });
       return languagePrompt(naturalFlow)+(saved(chatId)?'\nRESUME: saved profile / सहेजी गई जानकारी':'');
     }
 
+    if (comparison.active(chatId) && !['save', 'resume', 'role'].includes(value)) {
+      return comparison.handle(chatId, text, language);
+    }
     if(naturalFlow && state?.phase==='answer_confirm'){
       if(value==='3'||value==='cancel'){questionnaireByChat.delete(chatId);return language==='hi'?'जाँच रद्द की गई। *YOJANA START* से फिर शुरू करें।':'Check cancelled. Send *YOJANA START* to restart.';}
       const active={...state,phase:'questions',proposed_answer:undefined};
@@ -502,6 +497,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   }
 
   function acceptsBareQuestionnaireReply(chatId, text) {
+    if (comparison.active(chatId)) return Boolean(String(text ?? '').trim());
     if (awaitingCsc.get(chatId) > now() && String(text ?? '').trim()) return true;
     if (awaitingCscOffer.get(chatId) > now() && String(text ?? '').trim()) return true;
     const phase = questionnaireByChat.get(chatId)?.phase;
@@ -512,5 +508,5 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     return ['role','questions','natural_confirm','income_period','answer_confirm'].includes(phase) && Boolean(String(text ?? '').trim());
   }
 
-  return { handle, handleProfileStatement, isProfileStatement: text=>naturalFlow && isProfileStatement(text), answerQuestion, acceptsBareQuestionnaireReply, choosingLanguage: chatId => questionnaireByChat.get(chatId)?.phase === 'language', selectedLanguage: chatId => ['role','questions','natural_confirm','income_period','answer_confirm'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
+  return { handle, handleProfileStatement, isProfileStatement: text=>naturalFlow && isProfileStatement(text), answerQuestion, acceptsBareQuestionnaireReply, choosingLanguage: chatId => questionnaireByChat.get(chatId)?.phase === 'language', selectedLanguage: chatId => ['role','questions','natural_confirm','income_period','answer_confirm','comparison'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
 }
