@@ -11,8 +11,8 @@
 
 1. A person sends `YOJANA START` in a direct chat. The prefix is required during the prototype test on a personal number.
 2. The bot greets the person and asks them to reply `1` for Hindi or `2` for English. It then asks for a role: farmer, student, worker, artisan, family/other, or volunteer.
-3. Farmers, families, and workers get short scheme-specific questions. Once the questionnaire starts, the user can reply naturally with a number, YES/NO, BACK, SKIP, or CANCEL without repeating the prefix. Outside the active questionnaire, a `YOJANA ` prefix is still required during personal-number testing. Invalid replies prompt the same question again; `BACK` lets the user correct the previous answer. `SKIP` leaves the field unknown.
-4. The bot checks selected PM-KISAN, PMUY, or PM-SYM rules against reviewed passages and returns a cited preliminary result. Student and artisan paths show an official information link but do not claim an eligibility match.
+3. Farmers, families, and workers get **one scheme-specific question per reply**. A NO answer still advances to the next question; the result appears only after every question has been asked. The user can reply with a number, YES/NO, BACK, SKIP, or CANCEL without repeating the prefix. Invalid replies repeat the current question; BACK corrects the previous answer, and SKIP leaves a field unknown. NEXT after the result revisits skipped fields. Outside the active questionnaire, a `YOJANA ` prefix is still required during personal-number testing.
+4. The bot checks selected PM-KISAN, PMUY, or PM-SYM rules against reviewed passages and returns a cited preliminary result. It then asks whether nearby service-centre help is wanted. Only after YES/1 does it request a PIN or town and provide a Google Maps search link plus the official CSC locator; NO/2 ends this optional step. Map listings are not verified CSCs. Student and artisan paths show an official information link but do not claim an eligibility match.
 5. Unsaved answers stay in process memory. Completed answers remain editable during the session. SAVE separately consents to encrypted local retention of fictional answers for 30 days; RESUME restores and re-evaluates them after restart. ALERTS ON separately opts into reviewed updates, STOP revokes delivery consent, and DELETE erases saved profile information. The bot asks for no Aadhaar or bank details.
 6. For ordinary scheme questions, the bot retrieves approved passages and includes source title, authority, locator and URL. Time-sensitive sources expire from retrieval.
 
@@ -26,9 +26,9 @@
 
 These controls lower risk, but they cannot guarantee that a language model never misstates a non-numeric fact or translation. The response must always be treated as guidance, not a government decision. For a consequential question, the user should open the cited source or contact the official helpline/help desk.
 
-## Not implemented yet
+## Voice and remaining work
 
-An experimental opt-in Hindi/English voice-question path is available in code but is not yet verified on a phone. Send `YOJANA VOICE`, record a question and confirm the recognised text with `YOJANA CONFIRM`; use `YOJANA CANCEL` if wrong. Voice questions receive text answers only. A local faster-whisper installation and model are required. The first model download needs internet. Voice notes are only accepted after opt-in, kept in memory for transcription and are not applied as questionnaire facts.
+Hindi and English voice notes are accepted in an active direct chat without a voice command. The bot shows the recognised text; reply 1 or `YOJANA CONFIRM` to use it, 2 or `YOJANA CANCEL` to discard it, or `YOJANA EDIT <correct sentence>` to fix words before confirming. Voice questions receive cited text answers only. Local faster-whisper remains an option. With `YOJANA_STT_PROVIDER=sarvam`, recordings are sent to Sarvam Saaras v4 and use credits. One paired-phone Hindi question was transcribed correctly and answered with a cited text reply; this does not establish accuracy across languages or accents.
 
 Audio replies, current student eligibility matching, artisan eligibility matching, state-specific scheme matching and an automated document-change monitor are not running. The proposed monitor must quarantine changes for human review; it must never auto-approve new eligibility rules.
 

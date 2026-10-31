@@ -53,14 +53,17 @@ test('a missing PAN card question is not answered from a generic application pas
     assert.deepEqual(english.citations,[]);assert.deepEqual(hindi.citations,[]);
   }
 });
-test('questions can interrupt a questionnaire; exclusions stop further unnecessary questions',async()=>{
+test('questions can interrupt a questionnaire; a failing answer still leads through each remaining question',async()=>{
  const service=createAnswerService({passages,model:async()=>({fact_ids:['pmkisan-home-2026:1']})});
  const flow=createWhatsAppConversation({answers:service,passages});
  await flow.handle('qa','START');await flow.handle('qa','2');
  assert.match(await flow.handle('qa','What is the PM-KISAN benefit?'),/per year/u);
  await flow.handle('qa','1');
  assert.match(await flow.handle('qa','What is the PM-KISAN benefit?'),/per year/u);
- const failed=await flow.handle('qa','no');
+ assert.match(await flow.handle('qa','no'),/2\/4\. Did anyone in the family pay income tax/u);
+ assert.match(await flow.handle('qa','no'),/3\/4\. Is anyone in your farmer family/u);
+ assert.match(await flow.handle('qa','no'),/4\/4\. Does any other PM-KISAN exclusion/u);
+ const failed=await flow.handle('qa','skip');
  assert.match(failed,/Does not match/u);assert.match(failed,/Answers still needed/u);
  assert.match(await flow.handle('qa','EDIT 1'),/cultivable land/u);
 });

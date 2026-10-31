@@ -119,16 +119,14 @@ function formatRecommendation(result, language) {
   const note = language === 'hi'
     ? 'यह शुरुआती जाँच है, सरकारी निर्णय नहीं। पूरी शर्तें आधिकारिक पोर्टल या स्थानीय कार्यालय से जाँचें।'
     : 'Preliminary check only, not an official decision. Verify the full rules with the official portal or local office.';
-  const csc = language === 'hi'
-    ? 'नज़दीकी सेवा केंद्र खोजने के लिए 6 अंकों का PIN कोड या शहर का नाम भेजें। नहीं चाहिए तो SKIP भेजें। आधिकारिक CSC सूची: https://locator.csccloud.in/ (वहाँ अपना क्षेत्र चुनें)।'
-    : 'To search for nearby service centres, reply with a 6-digit PIN code or town name. Send SKIP if you do not need this. Official CSC locator: https://locator.csccloud.in/ (select your area there).';
-  const next = item.status === 'not_matched'
-    ? (language === 'hi' ? '• अगला कदम: यदि कोई जवाब गलत था, YOJANA START भेजकर सही जानकारी के साथ फिर जाँचें। नियमों और अन्य योजनाओं के लिए आधिकारिक कार्यालय से पूछें।' : '• Next: If an answer was wrong, send YOJANA START and check again with correct details. Ask the official office about the rules and other schemes.')
-    : (language === 'hi' ? '• अगला कदम: छूटे हुए जवाब देने या सुधारने के लिए YOJANA START भेजें। आवेदन से पहले आधिकारिक नियम जाँचें।' : '• Next: Send YOJANA START to supply or correct answers. Check the official rules before applying.');
+  const next = [
+    missing.length ? (language === 'hi' ? '• छूटे जवाबों के लिए NEXT भेजें।' : '• Send NEXT to answer skipped questions.') : '',
+    item.status === 'not_matched' ? (language === 'hi' ? '• जवाब गलत था? EDIT और सवाल का नंबर भेजकर सुधारें।' : '• Wrong answer? Send EDIT and its question number to correct it.') : '',
+  ].filter(Boolean).join('\n');
   const documents = item.scheme_id === 'pmuy'
     ? (language === 'hi' ? '• आवश्यक दस्तावेज़: PMUY की आधिकारिक सूची देखें: https://pmuy.gov.in/ujjwala2.html' : '• Required documents: See the official PMUY list: https://pmuy.gov.in/ujjwala2.html')
     : (language === 'hi' ? '• आवश्यक दस्तावेज़: आधिकारिक योजना पोर्टल या कार्यालय से सूची की पुष्टि करें।' : '• Required documents: Confirm the list with the official scheme portal or office.');
-  return `*${item.scheme_name}*\n• ${status}${explanation ? `\n${explanation}` : ''}${missingText}\n• ${note}\n${next}\n${documents}${sources ? `\n• ${sources.replaceAll('\n', '\n• ')}` : ''}\n• ${csc}`;
+  return `*${item.scheme_name}*\n• ${status}${explanation ? `\n${explanation}` : ''}${missingText}\n• ${note}${next ? `\n${next}` : ''}\n${documents}${sources ? `\n• ${sources.replaceAll('\n', '\n• ')}` : ''}`;
 }
 
 function infoOnly(role, language, passages) {
@@ -158,6 +156,10 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   const completedByChat = new Map();
   const touched = new Map();
   const awaitingCsc = new Map();
+  const awaitingCscOffer = new Map();
+  const cscOffer = language => language === 'hi'
+    ? 'क्या नज़दीकी सेवा केंद्र खोजने में मदद चाहिए?\n1 हाँ · 2 नहीं'
+    : 'Would you like help finding a nearby service centre?\n1 Yes · 2 No';
   function saved(chatId) {
     const id=store.id(chatId), value=store.get('profiles',id);
     if(value?.expires_at<=now()){store.delete('profiles',id);return null;}
@@ -168,9 +170,6 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     completedByChat.set(chatId,completed);
     const old=saved(chatId);
     if(old?.storage_consent)store.put('profiles',store.id(chatId),{...old,language:state.language,profile:state.profile,profiles:completed});
-  }
-  function resultControls(language) {
-    return language==='hi'?'सुधार: EDIT 1 (सवाल का नंबर), आगे: NEXT, दूसरी भूमिका: ROLE, सहेजें: SAVE, फिर खोलें: RESUME, अपडेट: ALERTS ON, बंद: STOP, मिटाएँ: DELETE।':'Correct: EDIT 1 (question number), continue: NEXT, another role: ROLE, save: SAVE, resume: RESUME, updates: ALERTS ON, unsubscribe: STOP, erase: DELETE.';
   }
   async function answerQuestion(chatId,text,language) {
     const result=await answers.chat({question:text,language});
@@ -188,15 +187,30 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   async function handle(chatId, text) {
     if (!chatId) throw new TypeError('A direct-chat identifier is required');
     if(typeof text!=='string' || text.length>1000)return 'Please send a short text question (up to 1000 characters).';
-    for(const [id,at] of touched)if(now()-at>86400000){touched.delete(id);languageByChat.delete(id);questionnaireByChat.delete(id);completedByChat.delete(id);awaitingCsc.delete(id);}
+    for(const [id,at] of touched)if(now()-at>86400000){touched.delete(id);languageByChat.delete(id);questionnaireByChat.delete(id);completedByChat.delete(id);awaitingCsc.delete(id);awaitingCscOffer.delete(id);}
     if(!touched.has(chatId) && touched.size>=2000)return 'The service is busy. Please try again later.';
     touched.set(chatId,now());
     const value = normalize(text);
     const state = questionnaireByChat.get(chatId);
     const language=languageByChat.get(chatId)||saved(chatId)?.language||'en';
     if (value === 'csc') {
+      awaitingCscOffer.delete(chatId);
       awaitingCsc.set(chatId,now()+300000);
       return language==='hi' ? 'CSC खोजने के लिए 6 अंकों का PIN कोड या शहर का नाम भेजें। रद्द करने के लिए CANCEL भेजें।' : 'Send a 6-digit PIN code or town name to search for a CSC. Send CANCEL to stop.';
+    }
+    if (awaitingCscOffer.get(chatId) > now()) {
+      if (['1','yes','y','हाँ','हां','जी'].includes(value)) {
+        awaitingCscOffer.delete(chatId);awaitingCsc.set(chatId,now()+300000);
+        return language==='hi'
+          ? 'कृपया अपना 6 अंकों का PIN कोड या शहर का नाम भेजें। नहीं बताना हो तो SKIP भेजें।'
+          : 'Please send your 6-digit PIN code or town name. Send SKIP if you prefer not to share it.';
+      }
+      if (['2','no','n','नहीं','नही','ना','skip','cancel'].includes(value)) {
+        awaitingCscOffer.delete(chatId);
+        return language==='hi'?'ठीक है। योजना के बारे में सवाल पूछने के लिए YOJANA के बाद सवाल भेजें।':'Okay. Send YOJANA followed by a scheme question whenever you need help.';
+      }
+      if (/^(?:start|stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next)$/iu.test(value) || /[?？]/u.test(text) || /^(?:ask\s|what\b|how\b|who\b|when\b|क्या|कितन|कैसे|कब)/iu.test(text)) awaitingCscOffer.delete(chatId);
+      else return cscOffer(language);
     }
     if (awaitingCsc.get(chatId) && awaitingCsc.get(chatId) > now()) {
       if (value === 'cancel' || value === 'skip' || value === 'start') { awaitingCsc.delete(chatId); if(value!=='start') return language==='hi'?'केंद्र की खोज छोड़ दी गई। सवाल पूछने के लिए YOJANA के बाद अपना सवाल भेजें।':'Centre search skipped. Send YOJANA followed by your question whenever you need help.'; }
@@ -213,7 +227,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     if(value==='delete') {
       store.delete('profiles',store.id(chatId));
       for(const [key,a] of store.entries('alerts'))if(a.profile_id===store.id(chatId))store.delete('alerts',key);
-      questionnaireByChat.delete(chatId);completedByChat.delete(chatId);languageByChat.delete(chatId);
+      questionnaireByChat.delete(chatId);completedByChat.delete(chatId);languageByChat.delete(chatId);awaitingCscOffer.delete(chatId);awaitingCsc.delete(chatId);
       return language==='hi'?'सहेजी गई जानकारी और अपडेट की सहमति मिटा दी गई।':'Saved profile and update consent deleted.';
     }
     if(['stop','alerts off'].includes(value)){
@@ -242,11 +256,12 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       const role=old.profile.scheme_id==='pm-kisan'?'farmer':old.profile.scheme_id==='pmuy'?'family':'worker';
       questionnaireByChat.set(chatId,{phase:'complete',language:old.language,role,profile:old.profile,index:0});
       const result=answers.recommend({profile:old.profile,language:old.language});
-      if(result.results?.length)awaitingCsc.set(chatId,now()+300000);
-      return formatRecommendation(result,old.language)+'\n'+resultControls(old.language);
+      if(result.results?.length)awaitingCscOffer.set(chatId,now()+300000);
+      return formatRecommendation(result,old.language)+(result.results?.length?'\n\n'+cscOffer(old.language):'');
     }
 
     if (isStart(text)) {
+      awaitingCsc.delete(chatId);awaitingCscOffer.delete(chatId);
       languageByChat.delete(chatId);
       questionnaireByChat.set(chatId, { phase: 'language' });
       return languagePrompt()+(saved(chatId)?'\nRESUME: saved fictional profile / सहेजी गई नमूना जानकारी':'');
@@ -328,9 +343,8 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       if (answer === undefined) return currentQuestion(state, true);
       const step = questionSets[state.role][state.index];
       const profile = { ...state.profile, [step.key]: answer };
-      const partial=answers.recommend({profile,language:state.language});
       const nextIndex = state.index + 1;
-      if (nextIndex < questionSets[state.role].length && partial.results?.[0]?.status!=='not_matched') {
+      if (nextIndex < questionSets[state.role].length) {
         const next = { ...state, profile, index: nextIndex };
         questionnaireByChat.set(chatId, next);
         return currentQuestion(next);
@@ -341,8 +355,8 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       remember(chatId,completed);
       try {
         const result = answers.recommend({ profile, language: state.language });
-        if(result.results?.length)awaitingCsc.set(chatId,now()+300000);
-        return `${formatRecommendation(result, state.language)}\n\n${resultControls(state.language)}`;
+        if(result.results?.length)awaitingCscOffer.set(chatId,now()+300000);
+        return formatRecommendation(result, state.language)+(result.results?.length?'\n\n'+cscOffer(state.language):'');
       } catch {
         return state.language === 'hi' ? 'सुझाव सेवा अभी उपलब्ध नहीं है। बाद में फिर कोशिश करें।' : 'The recommendation service is unavailable. Please try again later.';
       }
@@ -372,6 +386,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
 
   function acceptsBareQuestionnaireReply(chatId, text) {
     if (awaitingCsc.get(chatId) > now() && String(text ?? '').trim()) return true;
+    if (awaitingCscOffer.get(chatId) > now() && String(text ?? '').trim()) return true;
     const phase = questionnaireByChat.get(chatId)?.phase;
     if((phase || saved(chatId)) && /^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next|cancel)$/iu.test(normalize(text)))return true;
     if (phase === 'language') return ['1', '2'].includes(normalize(text));
