@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
 import { templates, selectTemplate, dayInIndia } from './templates.mjs';
+import { normalizeRecipient } from './recipient.mjs';
 
 export class DemoError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -52,7 +53,7 @@ export function createSmsService({ config, store, fetchImpl = fetch, now = Date.
     let template;
     try { template = selectTemplate(input.template, input.language, now()); } catch (error) { throw new DemoError(error.message); }
     if (store.rows.length >= 500) throw new DemoError('Demo ledger is full; review/archive it before continuing.', 429);
-    const recipient = mode === 'simulator' ? 'demo-recipient' : String(input.recipient || '').trim();
+    const recipient = mode === 'simulator' ? 'demo-recipient' : normalizeRecipient(input.recipient);
     if (mode === 'android' && !allowlist.has(recipient)) throw new DemoError('Recipient is not on the locally configured consenting-test allowlist.', 403);
     const scenario = input.scenario || 'success';
     if (!['success', 'failure', 'uncertain'].includes(scenario)) throw new DemoError('Unknown simulator scenario.');

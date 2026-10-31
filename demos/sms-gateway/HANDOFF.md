@@ -15,9 +15,9 @@ Tejas asked for an automated real-SMS demo using an Android gateway. This separa
 
 ## Validation performed
 
-- Current standalone `npm.cmd test`: 15/15 passed, with fake gateway/adb responses and fictional recipients only, including three Node-wizard tests.
+- Current standalone `npm.cmd test`: 18/18 passed, with fake gateway/adb responses and fictional recipients only, including recipient normalization and retries without re-entering gateway credentials.
 - USB update: 12/12 standalone tests passed, including unauthorized/multiple-device error handling, forwarding reuse/conflict refusal and invalid-port refusal (fake adb). A real authorized USB tunnel was subsequently created from laptop port 18080 to phone port 8080, and the digest-verified release APK install returned Success. The phone gateway service was not yet responding, so the application data path and carrier delivery remain unverified.
-- Team-repository `npm.cmd test` from the publication checkout based on captain commit `a64221d`: 65/65 passed after the Node setup update, including this demo's fifteen tests.
+- Team-repository `npm.cmd test` from the publication checkout based on captain commit `a64221d`: 68/68 passed after recipient normalization/retry, including this demo's eighteen tests.
 - `npm.cmd run demo`: localhost HTTP rehearsal passed for consent refusal, Hindi/English, failure, uncertainty and repeated message IDs.
 - `node --check public/app.js` and `node --check src/server.mjs`: passed.
 - `setup:phone` now runs a Node.js wizard, replacing the blocked PowerShell file. Verified interactive startup and USB default, then cancelled before entering credentials; no real phone configuration was changed. Tests verify hidden password echo/history protection, private config validation and preservation of old config on invalid inputs. The wizard has not yet been completed with real phone credentials.

@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { root } from '../src/server.mjs';
 import { gatewaySettings } from '../src/service.mjs';
+import { normalizeRecipient } from '../src/recipient.mjs';
 
 export function terminalPrompt(input, output) {
   let hidden = false;
@@ -32,9 +33,12 @@ export async function setupPhone({ ask, directory = resolve(root, '.runtime') })
   const enteredUrl = await ask(`Gateway URL${defaultUrl ? ` [Enter = ${defaultUrl}]` : ' (example http://192.168.1.20:8080)'}: `);
   const username = (await ask('Local Server username shown in the phone app: ')).trim();
   const password = await ask('Local Server password (hidden; press Enter when finished): ', { secret: true });
-  const recipient = (await ask('One consenting test recipient in international format (+91...): ')).trim();
+  let recipient = null, retry = false;
+  while (!recipient) {
+    recipient = normalizeRecipient(await ask((retry ? 'Number not recognised. Try again: ' : '') + 'Consenting test recipient (10-digit Indian mobile, or +country code): '));
+    retry = true;
+  }
   const messagesPath = (await ask('Message route from phone /docs [/message or /messages; Enter = /message]: ')).trim() || '/message';
-  if (!/^\+[1-9]\d{7,14}$/.test(recipient)) throw Error('Use international phone format including +; configuration was not changed.');
   const config = { mode: 'android', gatewayUrl: enteredUrl.trim() || defaultUrl, username, password, allowedNumbers: [recipient], messagesPath, dailySegmentLimit: 6 };
   gatewaySettings(config); // Validate the private address and credentials before writing anything.
   mkdirSync(directory, { recursive: true });

@@ -40,6 +40,12 @@ test('simulator supports both languages and never contacts a gateway',async t=>{
     assert.deepEqual(await service.send(row.id),result);
   }
 });
+test('real preview normalizes an Indian number and still checks the canonical allowlist', t=>{
+  const national='9'.repeat(10);
+  const {service}=fixture(t,{...android,allowedNumbers:['+91'+national]});
+  assert.equal(service.prepare(input({recipient:national})).recipient,'+…9999');
+  assert.throws(()=>service.prepare(input({recipient:'8'.repeat(10)})),/allowlist/);
+});
 test('Android payload, at-most-once concurrent submission, redaction and explicit delivery lookup',async t=>{
   const calls=[];
   const {service,dir}=fixture(t,android,async(url,options)=>{

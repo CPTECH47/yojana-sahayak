@@ -5,6 +5,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { setupPhone, terminalPrompt } from '../scripts/setup-phone.mjs';
+import { normalizeRecipient } from '../src/recipient.mjs';
 
 function directory(t) {
   const dir = mkdtempSync(join(tmpdir(), 'yojana-sms-setup-test-'));
@@ -50,4 +51,26 @@ test('password entry is hidden and cannot be recalled in the next prompt history
     assert.equal(await next, '');
     assert.ok(!displayed.includes('hidden-test-value'));
   } finally { prompt.close(); input.destroy(); output.destroy(); }
+});
+
+test('recipient normalization accepts Indian formatting and preserves explicit international numbers', () => {
+  const national = '9'.repeat(10);
+  for (const value of [national, '+91 ' + national, '91' + national, '0' + national, '(+91) ' + national.slice(0,5) + '-' + national.slice(5)]) {
+    assert.equal(normalizeRecipient(value), '+91' + national);
+  }
+  assert.equal(normalizeRecipient('+1 (202) 555-0123'), '+12025550123');
+  for (const value of ['', 'YOURNUMBER', '12345', '+9199999', '+91'+'9'.repeat(11), '++91'+national, '+12025550123 ext 4']) assert.equal(normalizeRecipient(value), null);
+});
+
+test('invalid recipient is re-prompted without losing gateway credentials', async t => {
+  const dir = directory(t);
+  const national = '9'.repeat(10);
+  const answers = ['http://127.0.0.1:18080','gateway-user','test-password-only','wrong-number',national,''];
+  const prompts=[];
+  await setupPhone({directory:dir,ask:async(label)=>{prompts.push(label);return answers.shift();}});
+  const config=JSON.parse(readFileSync(join(dir,'config.json'),'utf8'));
+  assert.deepEqual(config.allowedNumbers,['+91'+national]);
+  assert.equal(config.password,'test-password-only');
+  assert.equal(prompts.filter(label=>label.includes('password')).length,1);
+  assert.ok(prompts.some(label=>label.includes('Number not recognised')));
 });
