@@ -120,8 +120,8 @@ function formatRecommendation(result, language) {
     ? 'यह शुरुआती जाँच है, सरकारी निर्णय नहीं। पूरी शर्तें आधिकारिक पोर्टल या स्थानीय कार्यालय से जाँचें।'
     : 'Preliminary check only, not an official decision. Verify the full rules with the official portal or local office.';
   const csc = language === 'hi'
-    ? 'Common Service Centre (CSC) खोजें: https://locator.csccloud.in/ या नक्शा: https://findmycsc.nic.in/csc/ । वहाँ अपना क्षेत्र चुनें; सेवाएँ केंद्र के अनुसार अलग हो सकती हैं।'
-    : 'Find in-person help: https://locator.csccloud.in/ or the CSC map: https://findmycsc.nic.in/csc/ (select your area there; services vary by centre).';
+    ? 'नज़दीकी सेवा केंद्र खोजने के लिए YOJANA CSC भेजें। आधिकारिक CSC सूची: https://locator.csccloud.in/ (वहाँ अपना क्षेत्र चुनें)।'
+    : 'To search for nearby service centres, send YOJANA CSC. Official CSC locator: https://locator.csccloud.in/ (select your area there).';
   const next = item.status === 'not_matched'
     ? (language === 'hi' ? '• अगला कदम: यदि कोई जवाब गलत था, YOJANA START भेजकर सही जानकारी के साथ फिर जाँचें। नियमों और अन्य योजनाओं के लिए आधिकारिक कार्यालय से पूछें।' : '• Next: If an answer was wrong, send YOJANA START and check again with correct details. Ask the official office about the rules and other schemes.')
     : (language === 'hi' ? '• अगला कदम: छूटे हुए जवाब देने या सुधारने के लिए YOJANA START भेजें। आवेदन से पहले आधिकारिक नियम जाँचें।' : '• Next: Send YOJANA START to supply or correct answers. Check the official rules before applying.');
@@ -157,6 +157,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   const questionnaireByChat = new Map();
   const completedByChat = new Map();
   const touched = new Map();
+  const awaitingCsc = new Map();
   function saved(chatId) {
     const id=store.id(chatId), value=store.get('profiles',id);
     if(value?.expires_at<=now()){store.delete('profiles',id);return null;}
@@ -187,12 +188,27 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   async function handle(chatId, text) {
     if (!chatId) throw new TypeError('A direct-chat identifier is required');
     if(typeof text!=='string' || text.length>1000)return 'Please send a short text question (up to 1000 characters).';
-    for(const [id,at] of touched)if(now()-at>86400000){touched.delete(id);languageByChat.delete(id);questionnaireByChat.delete(id);completedByChat.delete(id);}
+    for(const [id,at] of touched)if(now()-at>86400000){touched.delete(id);languageByChat.delete(id);questionnaireByChat.delete(id);completedByChat.delete(id);awaitingCsc.delete(id);}
     if(!touched.has(chatId) && touched.size>=2000)return 'The service is busy. Please try again later.';
     touched.set(chatId,now());
     const value = normalize(text);
     const state = questionnaireByChat.get(chatId);
     const language=languageByChat.get(chatId)||saved(chatId)?.language||'en';
+    if (value === 'csc') {
+      awaitingCsc.set(chatId,now()+300000);
+      return language==='hi' ? 'CSC खोजने के लिए 6 अंकों का PIN कोड या शहर का नाम भेजें। रद्द करने के लिए CANCEL भेजें।' : 'Send a 6-digit PIN code or town name to search for a CSC. Send CANCEL to stop.';
+    }
+    if (awaitingCsc.get(chatId) && awaitingCsc.get(chatId) > now()) {
+      if (value === 'cancel' || value === 'start') { awaitingCsc.delete(chatId); if(value==='cancel') return language==='hi'?'केंद्र की खोज रद्द की गई।':'Centre search cancelled.'; }
+      else {
+        const area=String(text).trim();
+        if (!/^[\p{L}\p{M}\p{N} .,'-]{2,60}$/u.test(area) || (/^\d+$/.test(area) && !/^[1-9]\d{5}$/.test(area))) return language==='hi'?'कृपया सही 6 अंकों का PIN कोड या शहर का नाम भेजें।':'Please send a valid 6-digit PIN code or a town name.';
+        awaitingCsc.delete(chatId);
+        const url=new URL('https://www.google.com/maps/search/');
+        url.searchParams.set('api','1');url.searchParams.set('query',`Common Service Centre ${area} India`);
+        return language==='hi' ? `Google Maps पर सेवा केंद्र खोजें:\n${url}\n\nलिस्टिंग की CSC के रूप में पुष्टि नहीं की गई है। जाने से पहले फोन करके योजना की सेवा और शुल्क पूछें।\nआधिकारिक CSC खोज: https://locator.csccloud.in/` : `Search Google Maps for service centres:\n${url}\n\nListings are not verified as CSCs. Call before visiting to check the scheme service and any fee.\nOfficial CSC locator: https://locator.csccloud.in/`;
+      }
+    }
     if(value==='delete') {
       store.delete('profiles',store.id(chatId));
       for(const [key,a] of store.entries('alerts'))if(a.profile_id===store.id(chatId))store.delete('alerts',key);
@@ -351,6 +367,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   }
 
   function acceptsBareQuestionnaireReply(chatId, text) {
+    if (awaitingCsc.get(chatId) > now() && String(text ?? '').trim()) return true;
     const phase = questionnaireByChat.get(chatId)?.phase;
     if((phase || saved(chatId)) && /^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next|cancel)$/iu.test(normalize(text)))return true;
     if (phase === 'language') return ['1', '2'].includes(normalize(text));

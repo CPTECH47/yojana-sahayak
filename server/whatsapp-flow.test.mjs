@@ -88,7 +88,7 @@ test('family questionnaire recommends PMUY only as a preliminary match with its 
   assert.match(result, /संभावित मेल/u);
   assert.match(result, /pmuy.gov.in\/ujjwala2.html/u);
   assert.match(result, /आवश्यक दस्तावेज़/u);
-  assert.match(result, /Common Service Centre/u);
+  assert.match(result, /YOJANA CSC/u);
   assert.match(result, /locator\.csccloud\.in/u);
   assert.equal(calls.at(-1).profile.scheme_id, 'pmuy');
   assert.equal(calls.at(-1).profile.household_has_existing_lpg, false);
@@ -124,6 +124,30 @@ test('recommendation reply keeps a short summary, groups repeated source pages, 
   assert.match(result, /If an answer was wrong/u);
   assert.match(result, /Required documents/u);
   assert.doesNotMatch(result, /Confirm with the official scheme portal or help desk/u);
+});
+
+test('CSC search creates an encoded Maps link after a valid PIN, with an official fallback',async()=>{
+  const {flow}=conversation();
+  await startAndChoose(flow,'a','2');
+  assert.match(await flow.handle('a','CSC'),/6-digit PIN/);
+  assert.equal(flow.acceptsBareQuestionnaireReply('a','123'),true);
+  assert.match(await flow.handle('a','123'),/valid 6-digit/);
+  const result=await flow.handle('a','263139');
+  const link=result.match(/https:\/\/www\.google\.com\/maps\/search\/\?\S+/u)?.[0];
+  assert.ok(link); const url=new URL(link);
+  assert.equal(url.searchParams.get('api'),'1');
+  assert.equal(url.searchParams.get('query'),'Common Service Centre 263139 India');
+  assert.match(result,/not verified as CSCs/);
+  assert.match(result,/locator\.csccloud\.in/);
+  assert.equal(flow.acceptsBareQuestionnaireReply('a','another town'),true); // existing active role remains untouched
+});
+
+test('CSC search accepts a town and can be cancelled',async()=>{
+  const {flow}=conversation();await startAndChoose(flow,'a','1');
+  await flow.handle('a','CSC');
+  const result=await flow.handle('a','हल्द्वानी');
+  assert.equal(new URL(result.match(/https:\/\/www\.google\.com\/maps\/search\/\?\S+/u)[0]).searchParams.get('query'),'Common Service Centre हल्द्वानी India');
+  await flow.handle('a','CSC');assert.match(await flow.handle('a','CANCEL'),/रद्द/u);
 });
 
 test('worker questionnaire checks only sourced PM-SYM conditions, including income band', async () => {

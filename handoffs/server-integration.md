@@ -87,3 +87,8 @@
 - `scripts/transcribe_voice.py`, `server/voice.mjs`, `server/voice-flow.mjs`, `server/whatsapp-flow.mjs`, `server/whatsapp-prototype.mjs`: use the explicitly selected Hindi or English as a local transcription hint while a role/questionnaire choice is active. Free questions continue automatic detection. Confirmation remains required. A user must first type the language to avoid guessing it from an isolated word.
 - Local synthetic English speech: small 4.1 s and turbo 12.7 s, both returned `1` (single sample, CPU including model load; no general accuracy claim). Larger turbo model loaded locally but actual Hindi single-word auto-detection returned unsupported language. Hindi hints and live questionnaire accuracy remain unverified.
 - `npm.cmd test`: 48/48 passed; `npm.cmd run build` and `git diff --check` passed. Model selection is an environment override `YOJANA_WHISPER_MODEL=turbo`, not a changed default; no API fields changed. The source-corpus assignment remains incomplete in draft PR #5.
+
+## CSC Maps search — 31 October
+
+- `server/whatsapp-flow.mjs` adds `YOJANA CSC`, then accepts a six-digit PIN or town in the active direct chat, validates and encodes it into a Google Maps search link, and provides the official CSC locator with a notice that map listings are unverified. The input is not added to the saved profile; the pending prompt expires after five minutes. `server/whatsapp-flow.test.mjs` checks invalid PINs, Unicode town encoding, cancellation and preservation of the existing questionnaire.
+- `npm.cmd test`: 50/50 passed. `npm.cmd run build`: passed. `git diff --check`: passed. Phone and actual Maps result quality remain unverified. No API fields changed.
