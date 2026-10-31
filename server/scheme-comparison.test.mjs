@@ -53,7 +53,8 @@ test('Hindi comparison skips excluded schemes, keeps unknowns and supports corre
   await flow.handle('sample', 'START'); await flow.handle('sample', '1');
   await flow.handle('sample', 'SCHEMES');
   assert.match(await flow.handle('sample', '1'), /खेती योग्य/u);
-  // No land excludes PM-KISAN. Out-of-range age excludes PM-SYM.
+  // Each scheme keeps its own land answer. No land excludes both farmer schemes.
+  assert.match(await flow.handle('sample', '2'), /2 हेक्टेयर/u);
   assert.match(await flow.handle('sample', '2'), /आयु/u);
   assert.match(await flow.handle('sample', '2'), /महिला/u);
   await flow.handle('sample', '4'); await flow.handle('sample', '4');

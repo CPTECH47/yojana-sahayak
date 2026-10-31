@@ -1,6 +1,7 @@
 import { loadPassages, retrieve, schemeFromText, schemes } from './corpus.mjs';
 import { supportedRecords, topicFor, ruleEvidenceMatches } from './verified-facts.mjs';
 import { compareProfiles } from './scheme-comparison.mjs';
+import { additionalSchemeRules } from './additional-scheme-rules.mjs';
 
 export async function askModel(messages, schema, fetchImpl = fetch) {
   const response = await fetchImpl(process.env.OLLAMA_URL || 'http://127.0.0.1:11434/api/chat', {
@@ -28,7 +29,7 @@ export function createAnswerService({ passages, model=askModel, now=()=>new Date
       return {status:'invalid_request',reason_code:'invalid_question_or_language',answer_text:'Use Hindi or English and a question of 1–1000 characters.',citations:[]};
     if (requested && !Object.hasOwn(schemes,requested)) return failure('unknown_scheme',language);
     const schemeId=requested || schemeFromText(question);
-    if (!schemeId) return {status:'clarify',language,scheme_id:null,reason_code:'choose_scheme',citations:[],answer_text:language==='hi'?'कृपया योजना का नाम बताएँ: PM-KISAN, PMUY, PM-SYM, PM Vishwakarma या NMMSS।':'Please name a covered scheme: PM-KISAN, PMUY, PM-SYM, PM Vishwakarma, or NMMSS.'};
+    if (!schemeId) return {status:'clarify',language,scheme_id:null,reason_code:'choose_scheme',citations:[],answer_text:language==='hi'?'कृपया योजना का नाम बताएँ: PM-KISAN, PM-KMY, PMUY, PM-SYM, PM Vishwakarma या NMMSS।':'Please name a covered scheme: PM-KISAN, PM-KMY, PMUY, PM-SYM, PM Vishwakarma, or NMMSS.'};
     // A general application fact cannot answer whether a particular missing document is allowed.
     // Revisit only after a scheme-specific exception is reviewed and pinned.
     if (/\bpan(?:\s+card)?\b|permanent account number|पैन/u.test(question.toLocaleLowerCase())) return failure('no_evidence',language,schemeId);
@@ -36,7 +37,7 @@ export function createAnswerService({ passages, model=askModel, now=()=>new Date
     if (!topic) return {status:'clarify',language,scheme_id:schemeId,reason_code:'missing_intent',citations:[],answer_text:language==='hi'?schemes[schemeId].name+' के लाभ, शर्तें, दस्तावेज़ या आवेदन के बारे में क्या जानना चाहेंगे?':'What would you like to know about '+schemes[schemeId].name+': benefits, conditions, documents, or application?'};
     const available=getPassages();
     // Actual retrieval happens on every factual question. Candidate records are pinned to that evidence.
-    const query=question+' '+schemes[schemeId].name+' '+topic;
+    const query=question+' '+schemes[schemeId].name+' '+schemeId+' '+topic;
     const hits=retrieve(available,query,schemeId,30);
     const hitIds=new Set(hits.map(p=>p.id));
     const candidates=supportedRecords(available).filter(r=>r.scheme_id===schemeId && r.topics.includes(topic) && hitIds.has(r.evidence_id));
@@ -66,7 +67,7 @@ export function createAnswerService({ passages, model=askModel, now=()=>new Date
     if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return { status: 'invalid_request', results: [], reason_code: 'invalid_profile' };
     const lang = ['en', 'hi'].includes(language) ? language : 'en';
     const schemeId = profile.scheme_id || 'pm-kisan';
-    if (!['pm-kisan','pmuy','pm-sym'].includes(schemeId)) return {status:'invalid_request',results:[],reason_code:'unsupported_scheme'};
+    if (!['pm-kisan','pmuy','pm-sym', ...Object.keys(additionalSchemeRules)].includes(schemeId)) return {status:'invalid_request',results:[],reason_code:'unsupported_scheme'};
     const config = {
       'pm-kisan': {
         name: schemes['pm-kisan'].name,
@@ -102,6 +103,7 @@ export function createAnswerService({ passages, model=askModel, now=()=>new Date
           ['receives_other_government_pension', true, 'Another government pension was reported.', 'दूसरी सरकारी पेंशन मिलना बताया गया।'],
         ],
       },
+      ...additionalSchemeRules,
     }[schemeId];
     if (!config) return { status: 'invalid_request', results: [], reason_code: 'unsupported_scheme' };
     const missing = config.fields.filter(key => typeof profile[key] !== 'boolean');
@@ -117,7 +119,7 @@ export function createAnswerService({ passages, model=askModel, now=()=>new Date
       : (lang === 'hi' ? 'दिए गए जवाब चुनी हुई शर्तों से मेल खाते हैं; बाकी आधिकारिक शर्तों की पुष्टि बाकी है।' : 'The supplied answers pass these selected checks; other official conditions still need verification.')];
     return {
       status: 'ok', language: lang,
-      results: [{ scheme_id: schemeId, scheme_name: config.name, status, reasons, missing_fields: missing, citations: ruleEvidence, official_decision: false }],
+      results: [{ scheme_id: schemeId, scheme_name: config.name, status, reasons, missing_fields: missing, citations: ruleEvidence, official_decision: false, ...(config.scope_note ? { scope_note: config.scope_note[lang] } : {}) }],
       coverage_note: lang === 'hi'
         ? 'यह केवल चुनी हुई शुरुआती शर्तों की जाँच है; यह सरकारी पात्रता निर्णय नहीं है। आधिकारिक पोर्टल/कार्यालय से पुष्टि करें।'
         : 'This checks selected preliminary conditions only; it is not an official eligibility decision. Confirm with the official portal or office.',

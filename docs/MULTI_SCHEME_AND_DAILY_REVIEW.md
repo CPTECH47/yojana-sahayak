@@ -5,20 +5,20 @@ National schemes are the first scope requested by the user. The comparison exper
 ## WhatsApp use
 
 1. Send `YOJANA START` and choose Hindi or English.
-2. Send `YOJANA SCHEMES`, then choose one of the five roles.
+2. Choose one of the five roles. The Baileys entry point enables multi-scheme comparison by default (`YOJANA_MULTI_SCHEME=1`). `YOJANA SCHEMES` also opens it explicitly; `YOJANA_MULTI_SCHEME=0` retains the earlier single-scheme menu route.
 3. Answer one condition at a time. The role orders the checks. Each scheme keeps its own answers, including conditions whose meaning differs between a family and an individual.
 4. `1` means yes, `2` no, `3` back, `4` unsure and `5` cancel. A reported exclusion stops the remaining questions for that scheme. Skips stay unknown.
-5. The final reply lists all available results, met/failed/unknown condition counts, missing questions and exact citations. `EDIT <question number>` corrects an answer, `NEXT` revisits a skip and `YOJANA START` restarts. `YOJANA CSC` opens the existing optional service-centre search.
+5. `RESULTS` shows the current comparison without answering every remaining question. Results list met/failed/unknown counts, missing questions and exact citations. `EDIT <question number>` corrects an answer, `NEXT` revisits a skip or continues, and `YOJANA START` restarts. Ask a source-backed question at any turn without consuming an answer. `YOJANA CSC` opens the existing optional service-centre search.
 
-The new command keeps the prior single-scheme and natural-profile journeys available. The comparison session stays in process memory and has not been connected to saved-profile alerts or SMS. It uses the same answer/recommendation service as WhatsApp and the HTTP API.
+Without SAVE, comparison answers stay in process memory. After viewing results, SAVE explicitly consents to 30-day retention in the existing encrypted local store; RESUME restores the comparison and rechecks evidence. ALERTS ON is separate consent, STOP disables alerts and DELETE erases retained profiles. Existing reviewed-update checks can evaluate the saved scheme profiles; experimental delivery remains disabled by default. SMS has not been connected to this journey. Text descriptions still require confirmation; the multi-scheme route asks its own rule questions rather than automatically copying extracted facts across schemes.
 
 ## Supported rules and ranking
 
-PM-KISAN, PM-SYM and PMUY have reviewed preliminary matching conditions in this snapshot. All five roles can enter comparison. Farmers may also have worker or household needs, so those schemes are checked separately instead of inferring that farmer status satisfies another scheme. Students and artisans also receive an approved NMMSS or PM Vishwakarma information citation when available. Their dedicated eligibility rules still need review.
+Six national schemes have pinned preliminary matching conditions: PM-KISAN, PM-KMY, NMMSS, PM-SYM, PM Vishwakarma and PMUY. Farmers start with PM-KISAN and PM-KMY; students start with fresh-Class-IX NMMSS; workers with PM-SYM; artisans with PM Vishwakarma; families with PMUY. Further worker, household or landholding checks are separate and do not infer eligibility from occupation. NMMSS renewal and test-entry assessment are outside this initial check. See [NATIONAL_ROLE_COVERAGE.md](NATIONAL_ROLE_COVERAGE.md) for source checks and API fields.
 
 Results rank possible matches, then incomplete checks, then reported exclusions. Within a group the fraction of the selected reviewed conditions met orders the results. The output shows the counts and missing conditions. These describe evidence and answer coverage; they are not statistically calibrated probabilities of benefit approval. Missing or expired rule evidence removes a scheme from ranked results and reports it as unavailable.
 
-The Agriculture Ministry's [30 July 2024 PIB overview](https://www.pib.gov.in/Pressreleaseshare.aspx?PRID=2039208&lang=2&reg=48) lists PM-KMY, PMFBY and other farming programmes. These are discovery leads. Current eligibility, exclusions, geographic/seasonal availability and application rules must be reviewed before adding their questionnaire rules. An older overview cannot establish that a current application window is open.
+The Agriculture Ministry's [30 July 2024 PIB overview](https://www.pib.gov.in/Pressreleaseshare.aspx?PRID=2039208&lang=2&reg=48) lists further farming programmes. PM-KMY now uses a separately checked September 2026 ministry backgrounder. PMFBY remains discovery-only: geographic/seasonal availability and current rules must be reviewed before adding matching. A policy overview cannot establish an open application window.
 
 ## API addition
 

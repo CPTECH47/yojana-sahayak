@@ -441,6 +441,97 @@
       "snapshot_sha256": "10667b7247eb922bcc6d97b178961897d905e5b1aeb93a79121bfdfd10a0bb99",
       "locator": "pages 1-2",
       "text": "This PM-KISAN eKYC note describes OTP, biometric at CSC/SSK, and face authentication through the PM-KISAN mobile app. The note has no publication date visible in the extracted pages; treat it as a dated-source snapshot, and ask users to confirm currently available methods on the official portal."
+    },
+    {
+      "scheme_id": "pm-kmy",
+      "title": "Securing Farmers’ Future with Dignity: 7 Years of PM-KMY",
+      "authority": "Ministry of Agriculture and Farmers Welfare / Press Information Bureau",
+      "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2309204&lang=1&reg=48",
+      "published_at": "2026-09-11",
+      "id": "pmkmy-policy-2026:1",
+      "document_id": "pmkmy-policy-2026",
+      "verified_at": "2026-10-31",
+      "snapshot_sha256": "24889118e2c2d261011e975f05b71ca5f14d20d90415b67d0aee69f562b1e6af",
+      "locator": "Who Can Benefit, HTML block 21",
+      "text": "The September 2026 ministry backgrounder limits PM-KMY entry to small/marginal farmers aged 18–40 with cultivable holdings no larger than two hectares and a name in State/UT land records on 1 August 2019."
+    },
+    {
+      "scheme_id": "pm-kmy",
+      "title": "Securing Farmers’ Future with Dignity: 7 Years of PM-KMY",
+      "authority": "Ministry of Agriculture and Farmers Welfare / Press Information Bureau",
+      "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2309204&lang=1&reg=48",
+      "published_at": "2026-09-11",
+      "id": "pmkmy-policy-2026:2",
+      "document_id": "pmkmy-policy-2026",
+      "verified_at": "2026-10-31",
+      "snapshot_sha256": "24889118e2c2d261011e975f05b71ca5f14d20d90415b67d0aee69f562b1e6af",
+      "locator": "Exclusion Criteria, HTML blocks 27–49",
+      "text": "Excluded groups include other statutory pension/social-security subscribers, PM-SYM/PM-LVM beneficiaries, institutional landholders, specified public office holders, tax-paying individuals, registered practising professionals and specified government/public-sector employees. MTS/Class IV/Group D employees have an exception. Check the complete official exclusions."
+    },
+    {
+      "scheme_id": "pm-kmy",
+      "title": "Securing Farmers’ Future with Dignity: 7 Years of PM-KMY",
+      "authority": "Ministry of Agriculture and Farmers Welfare / Press Information Bureau",
+      "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2309204&lang=1&reg=48",
+      "published_at": "2026-09-11",
+      "id": "pmkmy-policy-2026:3",
+      "document_id": "pmkmy-policy-2026",
+      "verified_at": "2026-10-31",
+      "snapshot_sha256": "24889118e2c2d261011e975f05b71ca5f14d20d90415b67d0aee69f562b1e6af",
+      "locator": "Pension Shield and Enrolment, HTML blocks 17, 53–54, 202–204",
+      "text": "PM-KMY is voluntary and contributory. The described pension begins at 60, at ₹3,000 monthly. Contributions depend on entry age. A CSC assists enrolment and mandate processing; application approval and present availability need official confirmation."
+    },
+    {
+      "scheme_id": "nmmss",
+      "title": "NMMSS 2026-27: Ministry policy summary, 1 September 2026",
+      "authority": "Ministry of Education / Press Information Bureau",
+      "url": "https://www.pib.gov.in/newsite/erelcontent.aspx?lang=2&reg=48&relid=294184",
+      "published_at": "2026-09-01",
+      "id": "nmmss-policy-2026:1",
+      "document_id": "nmmss-policy-2026",
+      "verified_at": "2026-10-31",
+      "snapshot_sha256": "968712e5d7c27923f970b1b2d1d8c34296f7996fd5502bdaa4a085e606dec734",
+      "locator": "Policy summary, HTML blocks 18–19; fresh Class IX scope",
+      "text": "This September 2026 ministry summary describes fresh NMMSS awards for Class IX students selected by their State/UT examination, attending state-government, government-aided or local-body schools. Parental annual income is capped at ₹3.50 lakh. Class VII marks for the selection test must reach 55%, reduced to 50% for SC/ST students. Renewal has separate requirements. These checks do not establish an open application window."
+    },
+    {
+      "scheme_id": "nmmss",
+      "title": "NMMSS 2026-27: Ministry policy summary, 1 September 2026",
+      "authority": "Ministry of Education / Press Information Bureau",
+      "url": "https://www.pib.gov.in/newsite/erelcontent.aspx?lang=2&reg=48&relid=294184",
+      "published_at": "2026-09-01",
+      "id": "nmmss-policy-2026:2",
+      "document_id": "nmmss-policy-2026",
+      "verified_at": "2026-10-31",
+      "snapshot_sha256": "968712e5d7c27923f970b1b2d1d8c34296f7996fd5502bdaa4a085e606dec734",
+      "locator": "Scholarship and portal procedure, HTML blocks 18, 16, 21",
+      "text": "The summary states an annual scholarship of ₹12,000 for selected pupils. Registration and submission use the National Scholarship Portal with institutional verification. Its September calendar is historical: current dates must be checked separately with the school/NSP."
+    },
+    {
+      "scheme_id": "pm-vishwakarma",
+      "title": "PM Vishwakarma: Strengthening Traditional Artisans and Craftspeople",
+      "authority": "Ministry of Micro, Small and Medium Enterprises / Press Information Bureau",
+      "url": "https://www.pib.gov.in/PressNoteDetails.aspx?ModuleId=3&NoteId=159998&lang=1&reg=1",
+      "published_at": "2026-09-16",
+      "id": "pmvishwakarma-policy-2026:1",
+      "document_id": "pmvishwakarma-policy-2026",
+      "verified_at": "2026-10-31",
+      "snapshot_sha256": "d70a7f7d7d6fcca3f80fe0f24b2e198ef4cc48aefc53c84481ed11e8278cddb0",
+      "locator": "Eligibility, Registration and Formalisation, HTML blocks 32–36",
+      "text": "The September 2026 backgrounder describes entry for self-employed informal-sector artisans aged at least 18 using hands/tools in notified family trades. Only one family member may register; family means spouses and unmarried children. Government-service families are excluded. Similar government business loans in the preceding five years exclude entry, except fully repaid MUDRA/PM SVANidhi loans."
+    },
+    {
+      "scheme_id": "pm-vishwakarma",
+      "title": "PM Vishwakarma: Strengthening Traditional Artisans and Craftspeople",
+      "authority": "Ministry of Micro, Small and Medium Enterprises / Press Information Bureau",
+      "url": "https://www.pib.gov.in/PressNoteDetails.aspx?ModuleId=3&NoteId=159998&lang=1&reg=1",
+      "published_at": "2026-09-16",
+      "id": "pmvishwakarma-policy-2026:2",
+      "document_id": "pmvishwakarma-policy-2026",
+      "verified_at": "2026-10-31",
+      "snapshot_sha256": "d70a7f7d7d6fcca3f80fe0f24b2e198ef4cc48aefc53c84481ed11e8278cddb0",
+      "locator": "Trades and Registration, HTML blocks 40–70",
+      "text": "The 18 trade groups include carpenter, boat maker, armourer, metalsmith, hammer/toolkit maker, locksmith, goldsmith, potter, sculptor/stone breaker, footwear artisan, mason, basket/mat/broom/coir worker, doll/toy maker, barber, garland maker, washerman, tailor and fishing-net maker. Registration uses CSCs. Local and screening authorities verify and approve applications; a preliminary match does not establish current intake."
     }
   ]
 }

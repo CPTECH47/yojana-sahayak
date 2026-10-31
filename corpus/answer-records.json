@@ -1,6 +1,75 @@
 {
   "records": [
     {
+      "id": "pmkmy-policy-2026:1",
+      "evidence_id": "pmkmy-policy-2026:1",
+      "scheme_id": "pm-kmy",
+      "passage_sha256": "4ec5a5f993946ba7b778b27ae84e9bdf5d1ad0309b2fcd374878e6cc85369511",
+      "topics": [
+        "conditions"
+      ],
+      "en": "The reviewed September 2026 PM-KMY entry summary requires age 18–40, small/marginal cultivable holdings up to 2 hectares, and a land-record name on 1 August 2019. Separate pension and other exclusions also apply. These selected checks are not full approval.",
+      "hi": "सितंबर 2026 के PM-KMY सारांश के अनुसार प्रवेश में 18–40 वर्ष की आयु, अधिकतम 2 हेक्टेयर खेती योग्य जमीन वाले छोटे/सीमांत किसान और 1 अगस्त 2019 के भूमि रिकॉर्ड में नाम की शर्तें हैं। पेंशन व अन्य अपवाद अलग हैं; यह पूरी मंजूरी नहीं है।"
+    },
+    {
+      "id": "pmkmy-policy-2026:3",
+      "evidence_id": "pmkmy-policy-2026:3",
+      "scheme_id": "pm-kmy",
+      "passage_sha256": "0f8b9f093badaef2e8571a9ca3e6b480b39b828a1f2d83a06f63a22d93895a86",
+      "topics": [
+        "benefit",
+        "application"
+      ],
+      "en": "The September 2026 PM-KMY note describes a voluntary contributory pension, ₹3,000 monthly from age 60, with age-based contributions. Ask a CSC about enrolment, the mandate and current availability. This is not immediate cash support.",
+      "hi": "सितंबर 2026 के PM-KMY नोट में स्वैच्छिक अंशदायी पेंशन है: योगदान आयु के अनुसार है और ₹3,000 मासिक पेंशन 60 वर्ष से बताई गई है। पंजीकरण, सहमति-पत्र और वर्तमान उपलब्धता CSC से जाँचें। यह तुरंत मिलने वाला नकद लाभ नहीं है।"
+    },
+    {
+      "id": "nmmss-policy-2026:1",
+      "evidence_id": "nmmss-policy-2026:1",
+      "scheme_id": "nmmss",
+      "passage_sha256": "b2e7506e2d7d11ea8aea6774ea74e95240a966f8d32ded1eced7c57e9c25f9f5",
+      "topics": [
+        "conditions"
+      ],
+      "en": "For fresh Class IX NMMSS selection, the reviewed policy checks the State/UT selection, eligible school, parental income cap and Class VII marks including SC/ST relaxation. Renewal and remaining conditions need school verification; current application dates are not confirmed here.",
+      "hi": "NMMSS के चयन के बाद कक्षा 9 के नए आवेदन में राज्य/केंद्रशासित प्रदेश चयन, स्कूल, माता-पिता की आय और SC/ST छूट सहित कक्षा 7 के अंकों की जाँच है। नवीनीकरण व बाकी शर्तें स्कूल से जाँचें; वर्तमान आवेदन की तारीख यहाँ पुष्ट नहीं है।"
+    },
+    {
+      "id": "nmmss-policy-2026:2",
+      "evidence_id": "nmmss-policy-2026:2",
+      "scheme_id": "nmmss",
+      "passage_sha256": "89822ac11098596d149ad5142f56bb66962e5ef95178a6973b5888b17ea3d788",
+      "topics": [
+        "application",
+        "benefit"
+      ],
+      "en": "The reviewed ministry summary describes ₹12,000 annually for selected pupils and application through NSP with school verification. Ask the school/NSP for the current window; the old September timetable is not current application advice.",
+      "hi": "मंत्रालय के जाँचे गए सारांश में चयनित विद्यार्थियों को सालाना ₹12,000 और स्कूल की पुष्टि सहित NSP पर आवेदन बताया गया है। वर्तमान तारीख स्कूल/NSP से पूछें; सितंबर का पुराना समय-सारणी वर्तमान आवेदन की सलाह नहीं है।"
+    },
+    {
+      "id": "pmvishwakarma-policy-2026:1",
+      "evidence_id": "pmvishwakarma-policy-2026:1",
+      "scheme_id": "pm-vishwakarma",
+      "passage_sha256": "abc2f7465afd60c87659dcaa9d2d6ecb9b6ff18c2f8ec3fb9dd4c82737c42701",
+      "topics": [
+        "conditions"
+      ],
+      "en": "PM Vishwakarma checks adult status, active notified trade, informal self-employment, government-service family exclusion, one family registration and similar-loan restrictions. Fully repaid MUDRA/PM SVANidhi loans have an exception. A CSC must confirm full eligibility and present intake.",
+      "hi": "PM Vishwakarma में वयस्क आयु, सूचीबद्ध व्यवसाय, असंगठित स्वरोज़गार, सरकारी-सेवा परिवार का अपवाद, परिवार में एक पंजीकरण और समान ऋण की शर्तें हैं। पूरा चुकाया MUDRA/PM SVANidhi ऋण अपवाद है। पूरी पात्रता और वर्तमान आवेदन CSC से पुष्ट करें।"
+    },
+    {
+      "id": "pmvishwakarma-policy-2026:2",
+      "evidence_id": "pmvishwakarma-policy-2026:2",
+      "scheme_id": "pm-vishwakarma",
+      "passage_sha256": "c92842bd55fab02f01e5655753e613a54e3330c1200894dd0ec9c14ff1e0b819",
+      "topics": [
+        "trades",
+        "application"
+      ],
+      "en": "The reviewed 18 traditional trade groups are carpenter; boat maker; armourer; metalsmith; hammer/toolkit maker; locksmith; goldsmith; potter; sculptor/stone breaker; footwear artisan; mason; basket/mat/broom/coir worker; doll/toy maker; barber; garland maker; washerman; tailor; fishing-net maker. A CSC handles registration, followed by official verification. Confirm current intake there.",
+      "hi": "जाँचे गए 18 व्यवसाय समूह हैं: बढ़ई; नाव बनाने वाले; अस्त्र बनाने वाले; धातु कारीगर; हथौड़ा/औज़ार बनाने वाले; ताला बनाने वाले; सुनार; कुम्हार; मूर्तिकार/पत्थर तोड़ने वाले; जूते बनाने वाले; राजमिस्त्री; टोकरी/चटाई/झाड़ू/कॉयर कारीगर; गुड़िया/खिलौने बनाने वाले; नाई; मालाकार; धोबी; दर्जी; मछली जाल बनाने वाले। पंजीकरण CSC से और पुष्टि सरकारी प्रक्रिया से होती है। वर्तमान आवेदन CSC से जाँचें।"
+    },
+    {
       "id": "pmkisan-home-2026:1",
       "evidence_id": "pmkisan-home-2026:1",
       "scheme_id": "pm-kisan",

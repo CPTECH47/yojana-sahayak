@@ -236,6 +236,73 @@
       "extraction_status": "failed_image_only_no_readable_text",
       "review_note": "The current application page links this form, but the downloaded PDF page is image-only and text extraction returned no readable text. It is excluded from runtime passages until human transcription and visual review are completed.",
       "status": "failed"
+    },
+    {
+      "id": "pmkmy-policy-2026",
+      "scheme_id": "pm-kmy",
+      "title": "Securing Farmers’ Future with Dignity: 7 Years of PM-KMY",
+      "authority": "Ministry of Agriculture and Farmers Welfare / Press Information Bureau",
+      "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2309204&lang=1&reg=48",
+      "format": "html",
+      "published_at": "2026-09-11",
+      "status": "approved",
+      "snapshot_sha256": "24889118e2c2d261011e975f05b71ca5f14d20d90415b67d0aee69f562b1e6af",
+      "verified_at": "2026-10-31",
+      "reviewer": "Codex source comparison, 2026-10-31 (independent team review pending)",
+      "passage_hashes": {
+        "pmkmy-policy-2026:1": "4ec5a5f993946ba7b778b27ae84e9bdf5d1ad0309b2fcd374878e6cc85369511",
+        "pmkmy-policy-2026:2": "9c73618697726c792b1265d27091546d90d1b3d4c9c4dcea87ee361ae9a657a2",
+        "pmkmy-policy-2026:3": "0f8b9f093badaef2e8571a9ca3e6b480b39b828a1f2d83a06f63a22d93895a86"
+      },
+      "valid_until": "2026-11-30",
+      "accessed_at": "2026-10-31",
+      "extraction_status": "readable_html_compared_to_cited_sections",
+      "review_note": "Assistant compared concise summaries and rule wording with the fetched official sections. Independent team review is still required before release. Application dates and current intake are not approved by these rules.",
+      "scope_note": "Original concise paraphrases only; private immutable snapshot retained locally. Recheck by 2026-11-30; this date is an operator review deadline, not a government application deadline."
+    },
+    {
+      "id": "nmmss-policy-2026",
+      "scheme_id": "nmmss",
+      "title": "NMMSS 2026-27: Ministry policy summary, 1 September 2026",
+      "authority": "Ministry of Education / Press Information Bureau",
+      "url": "https://www.pib.gov.in/newsite/erelcontent.aspx?lang=2&reg=48&relid=294184",
+      "format": "html",
+      "published_at": "2026-09-01",
+      "status": "approved",
+      "snapshot_sha256": "968712e5d7c27923f970b1b2d1d8c34296f7996fd5502bdaa4a085e606dec734",
+      "verified_at": "2026-10-31",
+      "reviewer": "Codex source comparison, 2026-10-31 (independent team review pending)",
+      "passage_hashes": {
+        "nmmss-policy-2026:1": "b2e7506e2d7d11ea8aea6774ea74e95240a966f8d32ded1eced7c57e9c25f9f5",
+        "nmmss-policy-2026:2": "89822ac11098596d149ad5142f56bb66962e5ef95178a6973b5888b17ea3d788"
+      },
+      "valid_until": "2026-11-30",
+      "accessed_at": "2026-10-31",
+      "extraction_status": "readable_html_compared_to_cited_sections",
+      "review_note": "Assistant compared concise summaries and rule wording with the fetched official sections. Independent team review is still required before release. Application dates and current intake are not approved by these rules.",
+      "scope_note": "Original concise paraphrases only; private immutable snapshot retained locally. Recheck by 2026-11-30; this date is an operator review deadline, not a government application deadline."
+    },
+    {
+      "id": "pmvishwakarma-policy-2026",
+      "scheme_id": "pm-vishwakarma",
+      "title": "PM Vishwakarma: Strengthening Traditional Artisans and Craftspeople",
+      "authority": "Ministry of Micro, Small and Medium Enterprises / Press Information Bureau",
+      "url": "https://www.pib.gov.in/PressNoteDetails.aspx?ModuleId=3&NoteId=159998&lang=1&reg=1",
+      "format": "html",
+      "published_at": "2026-09-16",
+      "status": "approved",
+      "snapshot_sha256": "d70a7f7d7d6fcca3f80fe0f24b2e198ef4cc48aefc53c84481ed11e8278cddb0",
+      "verified_at": "2026-10-31",
+      "reviewer": "Codex source comparison, 2026-10-31 (independent team review pending)",
+      "passage_hashes": {
+        "pmvishwakarma-policy-2026:1": "abc2f7465afd60c87659dcaa9d2d6ecb9b6ff18c2f8ec3fb9dd4c82737c42701",
+        "pmvishwakarma-policy-2026:2": "c92842bd55fab02f01e5655753e613a54e3330c1200894dd0ec9c14ff1e0b819"
+      },
+      "valid_until": "2026-11-30",
+      "accessed_at": "2026-10-31",
+      "extraction_status": "readable_html_compared_to_cited_sections",
+      "review_note": "Assistant compared concise summaries and rule wording with the fetched official sections. Independent team review is still required before release. Application dates and current intake are not approved by these rules.",
+      "scope_note": "Original concise paraphrases only; private immutable snapshot retained locally. Recheck by 2026-11-30; this date is an operator review deadline, not a government application deadline."
     }
   ]
 }

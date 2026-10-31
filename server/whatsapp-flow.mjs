@@ -135,8 +135,14 @@ function infoOnly(role, language, passages) {
 }
 
 // Language and profile answers are kept per direct chat in process memory and cleared on completion/restart.
-export function createWhatsAppConversation({ answers, passages, store = memoryStore(), now = Date.now, naturalFlow = process.env.YOJANA_NATURAL_FLOW !== '0', extractProfile = extractProfileStatement, interpretAnswer = interpretQuestionAnswer }) {
-  const comparison = createSchemeComparison({ answers, now, passages: () => passages ?? loadPassages() });
+export function createWhatsAppConversation({ answers, passages, store = memoryStore(), now = Date.now, multiScheme = false, naturalFlow = process.env.YOJANA_NATURAL_FLOW !== '0', extractProfile = extractProfileStatement, interpretAnswer = interpretQuestionAnswer }) {
+  const comparison = createSchemeComparison({ answers, now, onResults: (chatId, snapshot) => {
+    const completed = { ...(saved(chatId)?.profiles || {}), ...(completedByChat.get(chatId) || {}), ...snapshot.profiles };
+    completedByChat.set(chatId, completed);
+    const old = saved(chatId);
+    if (old?.storage_consent) store.put('profiles', store.id(chatId), { ...old, language: languageByChat.get(chatId) || old.language,
+      profiles: completed, comparison_snapshot: snapshot, profile: Object.values(snapshot.profiles)[0] });
+  } });
   const languageByChat = new Map();
   const questionnaireByChat = new Map();
   const completedByChat = new Map();
@@ -177,7 +183,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   }
   async function answerQuestion(chatId,text,language) {
     const active=questionnaireByChat.get(chatId);
-    const scheme_id=schemeFromText(text) || active?.profile?.scheme_id || lastSchemeByChat.get(chatId) || null;
+    const scheme_id=schemeFromText(text) || comparison.scheme(chatId) || active?.profile?.scheme_id || lastSchemeByChat.get(chatId) || null;
     if(scheme_id)lastSchemeByChat.set(chatId,scheme_id);
     if (active?.phase==='complete' && scheme_id===active.profile?.scheme_id && /^(?:am i eligible|do i qualify|क्या मैं पात्र हूँ|क्या मैं योग्य हूँ)[?？]?$/iu.test(String(text).trim())) {
       return formatRecommendation(answers.recommend({profile:active.profile,language}),language);
@@ -276,7 +282,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       if(!profiles || !Object.keys(profiles).length)return language==='hi'?'पहले शुरुआती जाँच पूरी करें।':'Complete a preliminary check first.';
       const old=saved(chatId);
       store.put('profiles',store.id(chatId),{...old,storage_consent:true,alert_opt_in:old?.alert_opt_in||false,language,
-        profile:state?.profile || Object.values(profiles).at(-1),profiles,expires_at:now()+30*86400000});
+        profile:state?.profile || Object.values(profiles).at(-1),profiles,comparison_snapshot:comparison.snapshot(chatId),expires_at:now()+30*86400000});
       return language==='hi'?'आपकी सहमति से दी गई जानकारी 30 दिन के लिए सहेजी गई। RESUME से खोलें; DELETE से मिटाएँ। अपडेट पाने के लिए अलग से ALERTS ON भेजें।':'With your consent, the supplied profile is saved for 30 days. RESUME to reopen or DELETE to erase. Send ALERTS ON separately if you want reviewed scheme updates.';
     }
     if(value==='alerts on'){
@@ -289,6 +295,11 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       const old=saved(chatId);
       if(!old)return language==='hi'?'कोई सहेजी गई जानकारी नहीं है। START भेजें।':'No saved profile. Send START.';
       languageByChat.set(chatId,old.language);completedByChat.set(chatId,old.profiles || {[old.profile.scheme_id]:old.profile});
+      if (old.comparison_snapshot) {
+        questionnaireByChat.set(chatId, { phase: 'comparison', language: old.language });
+        const result = comparison.restore(chatId, old.comparison_snapshot, old.language);
+        if (result) return result;
+      }
       const role=old.profile.scheme_id==='pm-kisan'?'farmer':old.profile.scheme_id==='pmuy'?'family':'worker';
       questionnaireByChat.set(chatId,{phase:'complete',language:old.language,role,profile:old.profile,index:0});
       const result=answers.recommend({profile:old.profile,language:old.language});
@@ -305,6 +316,14 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     }
 
     if (comparison.active(chatId) && !['save', 'resume', 'role'].includes(value)) {
+      const switchTo = requestedLanguage(text);
+      if (switchTo) {
+        languageByChat.set(chatId, switchTo);
+        return comparison.handle(chatId, 'NEXT', switchTo);
+      }
+      if (topicFor(text) || schemeFromText(text) || /[?？]/u.test(text) || /^ask\s/iu.test(text)) {
+        return await answerQuestion(chatId, text, language) + '\n\n' + comparison.prompt(chatId);
+      }
       return comparison.handle(chatId, text, language);
     }
     if(naturalFlow && state?.phase==='answer_confirm'){
@@ -429,6 +448,11 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     if (state?.phase === 'role') {
       const role = parseRole(text);
       if (!role) return rolePrompt(state.language, true);
+      if (multiScheme && ['farmer', 'student', 'worker', 'artisan', 'family'].includes(role)) {
+        questionnaireByChat.set(chatId, { phase: 'comparison', language });
+        comparison.handle(chatId, 'SCHEMES', language);
+        return comparison.handle(chatId, { farmer: '1', student: '2', worker: '3', artisan: '4', family: '5' }[role], language);
+      }
       if (!questionSets[role]) {
         questionnaireByChat.delete(chatId);
         return `${infoOnly(role, state.language, passages ?? loadPassages())}\n\n${state.language === 'hi' ? 'अब सवाल पूछें या दूसरी भूमिका के लिए YOJANA ROLE भेजें।' : 'Ask a question now, or send YOJANA ROLE to add another role.'}`;

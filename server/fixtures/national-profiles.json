@@ -1,0 +1,11 @@
+{
+  "fictional_only": true,
+  "profiles": [
+    {"role":"farmer","profile":{"scheme_id":"pm-kisan","owns_cultivable_land":true,"income_tax_payer_last_year":false,"practising_registered_professional":false,"other_official_exclusion":false}},
+    {"role":"farmer","profile":{"scheme_id":"pm-kmy","small_marginal_land_up_to_2ha":true,"age_18_to_40":true,"recorded_on_2019_08_01":true,"other_pension_coverage":false,"other_kmy_exclusion":false}},
+    {"role":"student","profile":{"scheme_id":"nmmss","fresh_class_ix_selected":true,"eligible_school":true,"parental_income_at_most_350000":true,"class_vii_marks_requirement":true}},
+    {"role":"worker","profile":{"scheme_id":"pm-sym","age_18_to_40":true,"monthly_income_at_most_15000":true,"unorganised_worker":true,"covered_by_epf_esic_nps":false,"income_tax_payer":false,"receives_other_government_pension":false}},
+    {"role":"artisan","profile":{"scheme_id":"pm-vishwakarma","notified_trade_active":true,"age_at_least_18":true,"self_employed_unorganised":true,"similar_loan_exclusion":false,"family_member_registered":false,"government_service_family":false}},
+    {"role":"family","profile":{"scheme_id":"pmuy","adult_woman_18_plus":true,"household_has_existing_lpg":false,"can_submit_deprivation_declaration":true}}
+  ]
+}

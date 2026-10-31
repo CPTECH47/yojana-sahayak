@@ -22,9 +22,9 @@ The answer service must retrieve passages only from documents with `status: appr
 
 On the repair branch, manifest passage_hashes bind passage content and metadata to the reviewed snapshot. Expiry is evaluated in Asia/Kolkata. The importer writes candidates only until a reviewer explicitly publishes concise passages. Updated rules and bilingual answer records require separate pin review. See docs/HARDENING.md for the exact fetch/review/publish procedure and current release gate.
 
-## Change monitoring (planned, not currently running)
+## Daily observations and reviewed publication
 
-- Check high-priority official source pages about every 30 minutes and lower-priority discovery pages daily, when an updater is implemented.
+- The bounded discovery registry is checked daily at 06:00 India time by `.github/workflows/source-monitor.yml`. The active copy is in the website repository's main branch. The team copy starts scheduling after it reaches the default branch. See `MULTI_SCHEME_AND_DAILY_REVIEW.md` for operation and reported upstream failures.
 - Use ETag/Last-Modified when supplied and a content hash fallback. A layout-only or transient fetch change should create a candidate for comparison, not erase the last approved snapshot.
 - Save new versions as candidates, compare extracted text with the last version, and identify changed rule passages for human review.
 - Recheck deadlines or application status against the official portal when asked; clearly date the result and tell applicants to verify before acting.
@@ -32,7 +32,7 @@ On the repair branch, manifest passage_hashes bind passage content and metadata 
 
 ## Current state
 
-The current snapshot has ten reviewed official documents/pages across PM-KISAN, NMMSS, PMUY, PM Vishwakarma and PM-SYM. The NMMSS application-calendar sources expire after 2026-10-31. The linked PMUY declaration PDF was excluded because text extraction returned no readable text. The project does not have a scheduled updater, automatic change notifications, or full snapshot version history. The manifest approval/expiry gate is enforced by `server/corpus.mjs`; verify any future import before marking it approved.
+The extension has thirteen usable official documents/pages at its recorded 31 October check, covering six schemes including PM-KMY. Two NMMSS calendar sources expire after 2026-10-31; their disputed dates remain withheld. Three newly compared policy sources have an operator review deadline of 2026-11-30, independent of application deadlines. Their concise passages, locators and rule pins are recorded separately, with independent team review pending before release. The linked PMUY declaration PDF remains excluded because extraction was unreadable. The daily observer stages reports only; reviewed-update alerts watch approved local sources with separate consent and test-only delivery. The manifest approval/expiry gate is enforced by `server/corpus.mjs`.
 
 ## Discovery sources supplied for the project
 
