@@ -378,5 +378,5 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     return (phase === 'role' || phase === 'questions') && Boolean(String(text ?? '').trim());
   }
 
-  return { handle, acceptsBareQuestionnaireReply, selectedLanguage: chatId => ['role','questions'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
+  return { handle, acceptsBareQuestionnaireReply, choosingLanguage: chatId => questionnaireByChat.get(chatId)?.phase === 'language', selectedLanguage: chatId => ['role','questions'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
 }

@@ -69,3 +69,29 @@ test('selected questionnaire language is passed as a speech hint',async()=>{
   await flow.handleAudio('chat',Buffer.from('fake'),true);
   assert.equal(options.language,'hi');
 });
+
+test('voice language menu describes the chosen language rather than the detected transcript language',async()=>{
+  const answers={chat:async()=>({answer_text:'',citations:[]}),recommend:()=>({results:[]})};
+  const conversation=createWhatsAppConversation({answers});
+  let spoken='one';
+  const flow=createVoiceFlow({answers,fallback:conversation.handle,isQuestionnaireReply:conversation.acceptsBareQuestionnaireReply,choosingLanguage:conversation.choosingLanguage,transcribe:async()=>({text:spoken,language:'en'})});
+  await conversation.handle('a','START');
+  assert.match(await flow.handleAudio('a',Buffer.from('fake'),true),/Option 1 selects \*Hindi/);
+  assert.match(await flow.handle('a','confirm'),/किसान/);
+  await conversation.handle('a','START');spoken='two';
+  assert.match(await flow.handleAudio('a',Buffer.from('fake'),true),/Option 2 selects \*English/);
+  assert.match(await flow.handle('a','confirm'),/Farmer/);
+});
+
+test('unclear language menu audio gets Hindi retry and never applies without confirmation',async()=>{
+  const hints=[],submitted=[];
+  const flow=createVoiceFlow({answers:{},choosingLanguage:()=>true,isQuestionnaireReply:()=>true,fallback:async(_id,v)=>{submitted.push(v);return 'next'},transcribe:async(_audio,{language})=>{hints.push(language);return language==='hi'?{text:'एक',language:'hi'}:{text:'I',language:'en'};}});
+  assert.match(await flow.handleAudio('a',Buffer.from('fake'),true),/Option 1 selects \*Hindi/);
+  assert.deepEqual(hints,[null,'hi']);assert.deepEqual(submitted,[]);
+  assert.equal(await flow.handle('a','confirm'),'next');assert.deepEqual(submitted,['1']);
+});
+
+test('unrecognised language choice falls back to typing without guessing',async()=>{
+  const flow=createVoiceFlow({answers:{},fallback:async()=>'',choosingLanguage:()=>true,transcribe:async()=>({text:'unclear',language:'en'})});
+  assert.match(await flow.handleAudio('a',Buffer.from('fake'),true),/type 1 for Hindi or 2 for English/);
+});

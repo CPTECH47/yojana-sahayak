@@ -1,9 +1,9 @@
 // A confirmed transcript may answer an active questionnaire or ask a question.
 function spokenChoice(text) {
   const normalized=String(text).trim().toLocaleLowerCase().replace(/[.!?।,]/gu,'').trim();
-  return ({one:'1',two:'2',three:'3',four:'4',five:'5',six:'6','एक':'1','दो':'2','तीन':'3','चार':'4','पांच':'5','पाँच':'5','छह':'6','१':'1','२':'2','३':'3','४':'4','५':'5','६':'6'})[normalized] || normalized;
+  return ({one:'1',two:'2',three:'3',four:'4',five:'5',six:'6',ek:'1',do:'2','एक':'1','दो':'2','तीन':'3','चार':'4','पांच':'5','पाँच':'5','छह':'6','१':'1','२':'2','३':'3','४':'4','५':'5','६':'6'})[normalized] || normalized;
 }
-export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaireReply=()=>false, selectedLanguage=()=>null, now=Date.now, diagnostic=()=>{} }) {
+export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaireReply=()=>false, selectedLanguage=()=>null, choosingLanguage=()=>false, now=Date.now, diagnostic=()=>{} }) {
   const states=new Map();
   const current=id=>{const s=states.get(id);if(s && s.expires<now()){states.delete(id);return null;}return s;};
   const prompt='Send one short Hindi or English voice question. Confirm the transcription before I answer. Voice is processed locally. Do not send Aadhaar, bank details or other private information.\nहिंदी या अंग्रेज़ी में छोटा आवाज़ वाला सवाल भेजें। जवाब से पहले लिखी हुई बात की पुष्टि करें। आधार या बैंक जानकारी न भेजें।';
@@ -14,9 +14,20 @@ export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaire
       states.delete(id);
       try {
         diagnostic('transcription started');
-        const result=await transcribe(audio,{language:selectedLanguage(id)});
+        const languageMenu=choosingLanguage(id);
+        let result;
+        try { result=await transcribe(audio,{language:selectedLanguage(id)}); }
+        catch(error) { if(!languageMenu || !['unsupported detected language','empty or invalid transcript'].includes(error?.message)) throw error; }
+        if(languageMenu && (!result || !['1','2'].includes(spokenChoice(result.text)))) {
+          diagnostic('retrying language choice in Hindi');
+          result=await transcribe(audio,{language:'hi'});
+        }
+        if(languageMenu && !['1','2'].includes(spokenChoice(result.text))) return 'Could not identify option 1 or 2. Please type 1 for Hindi or 2 for English.\nविकल्प स्पष्ट नहीं है। हिंदी के लिए 1 या अंग्रेज़ी के लिए 2 लिखें।';
         diagnostic('transcription ready for confirmation');
-        states.set(id,{phase:'confirm',...result,expires:now()+300000});
+        states.set(id,{phase:'confirm',...result,languageMenu,expires:now()+300000});
+        if(languageMenu) return spokenChoice(result.text)==='1'
+          ? `I heard: ${result.text}\nOption 1 selects *Hindi / हिंदी*. Send YOJANA CONFIRM to continue in Hindi, or YOJANA CANCEL to choose again.\nविकल्प 1 से हिंदी चुनी जाएगी।`
+          : `I heard: ${result.text}\nOption 2 selects *English / अंग्रेज़ी*. Send YOJANA CONFIRM to continue in English, or YOJANA CANCEL to choose again.\nविकल्प 2 से अंग्रेज़ी चुनी जाएगी।`;
         return result.language==='hi'
           ? `मैंने सुना (हिंदी): ${result.text}\nशब्द और भाषा सही हों तो YOJANA CONFIRM भेजें। गलत हो तो YOJANA CANCEL भेजें और फिर से रिकॉर्ड करें।`
           : `I heard (English): ${result.text}\nSend YOJANA CONFIRM if the words and language are correct. Otherwise send YOJANA CANCEL and record again.`;
@@ -33,6 +44,7 @@ export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaire
       if(state?.phase==='confirm' && command==='confirm'){
         states.delete(id);
         try {
+          if(state.languageMenu && !choosingLanguage(id)) return 'The menu changed. Please send YOJANA START and choose again.\nमेनू बदल गया है। कृपया फिर से शुरू करें।';
           const choice=spokenChoice(state.text);
           if (isQuestionnaireReply(id, choice) && /^(?:[1-6]|yes|no|हाँ|हां|नहीं|नही|जी|ना|skip)$/iu.test(choice)) return await fallback(id,choice);
           const result=await answers.chat({question:state.text,language:state.language});

@@ -97,3 +97,9 @@
 
 - `server/whatsapp-flow.mjs` now asks for a PIN or town in each available final recommendation and when reopening a saved result. A five-minute pending prompt accepts the next direct reply; SKIP/CANCEL ends it, and START or other supported controls continue normally. The Maps search remains an unverified listing search and does not store the entered location in the profile.
 - `server/whatsapp-flow.test.mjs` verifies the complete PMUY fictional flow, bare PIN response, generated map link and SKIP. `npm.cmd test`: 51/51 passed; `npm.cmd run build` and `git diff --check` passed. Real paired-phone test of this new sequence remains pending. No API contract changed.
+
+## Voice language menu clarification — 31 October
+
+- `server/voice-flow.mjs`, `server/whatsapp-flow.mjs` and `server/whatsapp-prototype.mjs`: at the language menu, recognized option 1 explicitly confirms Hindi and option 2 English, independently of the language detected in speech. If automatic detection is unsupported, empty, or does not recognize 1/2, retry that short menu recording with Hindi; if still unclear ask for a typed choice. Transcript and chosen option still require explicit confirmation; a changed menu invalidates the pending selection. This is a recognition experiment, not a claim of Hindi accuracy.
+- `server/voice-flow.test.mjs`: exercises 1->Hindi, 2->English, retry, refusal and confirmation using synthetic mocked transcripts. `npm.cmd test`: 54/54 passed; `npm.cmd run build` passed; `git diff --check` passed. Real Hindi and English voice notes remain unverified after this change; retry can take extra time. No API fields changed.
+- GitHub review: data branch `198a32f` continues a draft audit with unresolved corpus/reproducibility and rules; Tejas's separate `demo/local-sms` PR #9 at `c798204` has 8/8 simulator tests passed independently here, but no physical SMS test or Baileys integration. PR #7 remains open; no PR was merged.
