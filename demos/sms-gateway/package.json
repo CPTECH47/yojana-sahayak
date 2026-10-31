@@ -1,0 +1,14 @@
+{
+  "name": "yojana-sms-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.9" },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "demo": "node scripts/demo.mjs",
+    "test": "node --test",
+    "setup:phone": "powershell -NoProfile -File scripts/setup-phone.ps1",
+    "check:phone": "node scripts/check-phone.mjs"
+  }
+}
