@@ -1,0 +1,32 @@
+[
+  {
+    "id": "pmjay-cabinet-2024",
+    "url": "https://www.pib.gov.in/Pressreleaseshare.aspx?PRID=2053881&lang=2&reg=48",
+    "status": "needs_review",
+    "raw_html_sha256": "0561626469e13aa3937179d37d38c9ab528e7337f523313009e48db0bed767f3",
+    "raw_html_bytes": 19564,
+    "excerpt_sha256": "29ed1ffbc5eda91e1d584361322b27993968590655d0969cedfeda9db7b18772",
+    "excerpt_file": "pmjay-cabinet-2024.txt",
+    "locator": "article paragraph beginning: The Union Cabinet, chaired"
+  },
+  {
+    "id": "pmjay-senior-2026",
+    "url": "https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2330009&lang=2&reg=48",
+    "status": "needs_review",
+    "raw_html_sha256": "8b4592e83249a70d48fa21147f1c58c5a39d11e452cfeea5950746019303f59c",
+    "raw_html_bytes": 214744,
+    "excerpt_sha256": "ef7a70e99234706a4be2eec824bfaa466a514a094c9104c03afc224a6b231a3e",
+    "excerpt_file": "pmjay-senior-2026.txt",
+    "locator": "article paragraph beginning: Under Ayushman Vay Vandana, all senior citizens"
+  },
+  {
+    "id": "pmmvy-2026",
+    "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2270668&lang=1&reg=6",
+    "status": "needs_review",
+    "raw_html_sha256": "6beec1e16f3de627328272dda2cca450711460b9ac1776414bdafbf8637b7093",
+    "raw_html_bytes": 92695,
+    "excerpt_sha256": "baa1e8b40bc15b6eb01439a69b3cbafa7a636cf2230db9d4e5319d3122ad16e3",
+    "excerpt_file": "pmmvy-2026.txt",
+    "locator": "article paragraph beginning: Since its integration under Mission Shakti"
+  }
+]
