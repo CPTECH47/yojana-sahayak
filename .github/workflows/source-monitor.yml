@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   review:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -21,10 +21,10 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: .runtime/source-monitor/state.json
-          key: source-monitor-${{ github.run_id }}
-          restore-keys: source-monitor-
+          key: source-monitor-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: source-monitor-${{ runner.os }}-
       - run: python -m unittest discover -s scripts -p test_check_sources.py
-      - run: python scripts/check_sources.py
+      - run: python scripts/check_sources.py --summary "$env:GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -35,4 +35,4 @@ jobs:
         if: always() && hashFiles('.runtime/source-monitor/state.json') != ''
         with:
           path: .runtime/source-monitor/state.json
-          key: source-monitor-${{ github.run_id }}
+          key: source-monitor-${{ runner.os }}-${{ github.run_id }}

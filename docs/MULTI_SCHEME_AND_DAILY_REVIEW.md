@@ -42,6 +42,10 @@ Its registry covers all five roles using official PM-KISAN, PMFBY, PIB, scholars
 
 The report and review excerpts are under ignored `.runtime/source-monitor/report.json`; state is stored beside it. GitHub keeps the report as the `official-source-review` run artifact for 14 days and caches the small baseline for the next run. A cache miss starts a new baseline. No website snapshot, private profile, credential or WhatsApp message is uploaded by this job. It cannot approve or publish sources.
 
+The workflow uses a Windows runner with native truststore verification, matching this laptop's working fetch environment. Cache keys include the runner OS. Temporary connection/time-out or 429/5xx failures receive one retry; certificate errors do not. `--summary <path>` appends an escaped, readable coverage table; the workflow passes GitHub's step-summary file. Fetch failures still fail the job, while report upload and baseline preservation run afterward.
+
+The tested Windows run fetched PM-KISAN successfully without disabling TLS: [run 41218502839](https://github.com/tejaspant09/yojana-sahayak-website/actions/runs/41218502839). Nine of thirteen seeds were readable. NSP had a connection error, the PM Vishwakarma portal timed out, and PMFBY/Labour returned no usable extracted text. Policy documents for students and artisans remained readable. These are partial observations, not complete source coverage.
+
 Scheduled workflows run from a repository's default branch. The team PR must reach that branch before this copy's daily schedule becomes active. A deployment copy can run the same workflow in the website repository, which the user owns. Successful fetching is observation, not a government endorsement or source approval. The configured seeds are a bounded discovery set, not exhaustive national coverage.
 
 ## Adding reviewed coverage

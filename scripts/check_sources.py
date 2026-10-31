@@ -3,10 +3,13 @@ import argparse
 import hashlib
 import json
 import re
+import html
+import time
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urljoin, urlparse, urldefrag
+from urllib.parse import urljoin, urlparse, urldefrag, quote
 
+import requests
 from bs4 import BeautifulSoup
 from ingest_sources import ROOT, HOSTS, extract, fetch, read, write
 
@@ -26,7 +29,22 @@ def discovery_links(content, base):
     return sorted(links)[:50]
 
 
-def check_sources(sources, output, downloader=fetch):
+def download_with_retry(url, downloader, pause=time.sleep):
+    for attempt in (1, 2):
+        try:
+            return downloader(url), attempt
+        except Exception as error:
+            # Certificate failures require diagnosis, never bypass or blind retry.
+            if isinstance(error, requests.exceptions.SSLError):
+                raise
+            status = getattr(getattr(error, 'response', None), 'status_code', 0)
+            retryable = isinstance(error, (requests.exceptions.Timeout, requests.exceptions.ConnectionError, TimeoutError)) or status == 429 or 500 <= status < 600
+            if attempt == 2 or not retryable:
+                raise
+            pause(1)
+
+
+def check_sources(sources, output, downloader=fetch, pause=time.sleep):
     if len(sources) > 30 or any(not re.fullmatch(r'[a-z0-9-]{1,80}', s['id']) for s in sources):
         raise ValueError('Use at most 30 sources with safe identifiers')
     if len({source['id'] for source in sources}) != len(sources):
@@ -43,7 +61,8 @@ def check_sources(sources, output, downloader=fetch):
         result = {key: source[key] for key in ('id', 'title', 'url', 'roles')}
         result['checked_at'] = checked
         try:
-            content, final_url = downloader(source['url'])
+            (content, final_url), attempts = download_with_retry(source['url'], downloader, pause)
+            result['attempts'] = attempts
             blocks = extract(content, source['format'])
             result.update(final_url=final_url, snapshot_sha256=hashlib.sha256(content).hexdigest())
             if not blocks:
@@ -72,13 +91,41 @@ def check_sources(sources, output, downloader=fetch):
     return report
 
 
+def write_summary(report, path):
+    results = report['results']
+    readable = sum(r['status'] not in ('fetch_failed', 'extraction_failed') for r in results)
+    def cell(value):
+        return html.escape(str(value)).replace('\\', '\\\\').replace('[', '\\[').replace(']', '\\]').replace('|', '&#124;').replace('\n', ' ').replace('\r', ' ')
+    lines = ['## Official-source observations', '',
+             f"Checked {cell(report['checked_at'])}. Readable: **{readable}/{len(results)}**.",
+             'New or changed material requires review. This report does not approve facts or establish eligibility.', '',
+             '| Source | Roles | Observation |', '| --- | --- | --- |']
+    for result in results:
+        url = result['url']
+        parsed = urlparse(url)
+        if parsed.scheme == 'https' and parsed.hostname in HOSTS and not parsed.username and not parsed.password and parsed.port in (None, 443):
+            source = f"[{cell(result['title'])}]({quote(url, safe=':/?&=%#')})"
+        else:
+            source = cell(result['title'])
+        note = result['status'] + (f" ({result['error_type']})" if result.get('error_type') else '')
+        lines.append(f"| {source} | {cell(', '.join(result['roles']))} | {cell(note)} |")
+    if readable != len(results):
+        lines.extend(['', '**Coverage is incomplete.** Inspect failed sources and retain the last approved evidence.'])
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with Path(path).open('a', encoding='utf-8') as stream:
+        stream.write('\n'.join(lines) + '\n')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--registry', type=Path, default=ROOT / 'corpus/discovery-registry.json')
     parser.add_argument('--output', type=Path, default=ROOT / '.runtime/source-monitor')
+    parser.add_argument('--summary', type=Path, help='Append a readable summary to this file; GitHub sets GITHUB_STEP_SUMMARY')
     args = parser.parse_args()
     report = check_sources(read(args.registry)['sources'], args.output,
                            downloader=lambda url: fetch(url, timeout=12))
+    if args.summary:
+        write_summary(report, args.summary)
     counts = {}
     for result in report['results']:
         counts[result['status']] = counts.get(result['status'], 0) + 1
