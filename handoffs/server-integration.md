@@ -1,5 +1,12 @@
 # Server integration handoff
 
+## Integration of Tejas's PR #7
+
+- Integrated the hardening branch with the newer captain changes: retained bullet results, missing-question guidance, PMUY document link, and the 401 re-link instructions while adopting evidence locks, pinned answers, consent controls and message delivery safeguards from PR #7.
+- Updated the API contract and operation notes in `PROJECT_BRIEF.md` and `docs/HARDENING.md`. The chat response adds `mode` and `fact_ids`; recommendations can return `insufficient_evidence` without results when required evidence is unavailable. `/api/ready` reports separate model and corpus readiness.
+- Verified: 37 JavaScript tests, 4 isolated Python importer tests, production build and release gate on 31 October 2026 passed. The gate showed 10 usable documents. Two NMMSS records expire before 1 November and must be reviewed before claiming the minimum count afterwards.
+- A real paired-phone retest, actual model performance and a teammate check of the integrated journey remain outstanding. PR #7 must not be treated as live deployment proof.
+
 ## Latest update: skipped answers and WhatsApp 401
 
 - Recommendation results now list skipped questions separately from failed checks and tell users how to restart with corrected answers. No alternative scheme or guaranteed path to eligibility is claimed.

@@ -12,15 +12,12 @@ test('retrieval selects a real source passage with a page locator', () => {
   assert.match(hits[0].locator, /page|article/);
 });
 
-test('an unseen Hindi question uses translated retrieval and cites only selected evidence', async () => {
-  let call = 0;
-  const model = async () => {
-    call += 1;
-    return call === 1 ? { query_en: 'PM-KISAN financial benefit 6000 per year' } : { answer_text: 'सालाना ₹6,000', evidence_ids: ['pmkisan-guidelines:2'] };
-  };
+test('an unseen Hindi question selects reviewed facts and renders pinned Hindi text', async () => {
+  const model = async () => ({fact_ids:['pmkisan-home-2026:1']});
   const result = await createAnswerService({ passages, model }).chat({ question: 'पीएम किसान में कितनी राशि मिलती है?', language: 'hi' });
   assert.equal(result.status, 'answered');
-  assert.equal(result.citations[0].evidence_id, 'pmkisan-guidelines:2');
+  assert.equal(result.citations[0].evidence_id, 'pmkisan-home-2026:1');
+  assert.match(result.answer_text,/सालाना ₹6,000/u);
   assert.equal(result.language, 'hi');
 });
 
@@ -28,12 +25,12 @@ test('unsupported amounts and missing evidence are refused', async () => {
   const falseAmount = createAnswerService({ passages, model: async () => ({ answer_text: 'Rs 50000 monthly', evidence_ids: ['pmkisan-guidelines:2'] }) });
   const result = await falseAmount.chat({ question: 'PM-KISAN benefit amount?', language: 'en' });
   assert.equal(result.status, 'insufficient_evidence');
-  assert.equal(result.reason_code, 'unsupported_claim');
+  assert.equal(result.reason_code, 'unsupported_selection');
   assert.deepEqual(result.citations, []);
   const unknown = await falseAmount.chat({ question: 'How much does the fictional Moon Farmer Scheme pay?', language: 'en' });
-  assert.equal(unknown.reason_code, 'no_evidence');
+  assert.equal(unknown.reason_code, 'choose_scheme');
   const invalidScheme = await falseAmount.chat({ question: 'What does PM-KISAN pay?', scheme_id: 'fictional-scheme' });
-  assert.equal(invalidScheme.reason_code, 'no_evidence');
+  assert.equal(invalidScheme.reason_code, 'unknown_scheme');
 });
 
 test('a known scheme name alone asks a useful clarifying question', async () => {

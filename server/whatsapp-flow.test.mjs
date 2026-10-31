@@ -22,6 +22,25 @@ async function startAndChoose(flow, jid = 'chat-a', language = '1') {
   return flow.handle(jid, language);
 }
 
+test('Hindi numeric questionnaire replies support yes, no, back, skip and cancel', async () => {
+  const { flow, calls } = conversation();
+  await startAndChoose(flow);
+  const question = await flow.handle('chat-a', '1');
+  assert.match(question, /1 हाँ[\s\S]*2 नहीं[\s\S]*3 पिछला सवाल[\s\S]*4 पता नहीं[\s\S]*5 रोकें/u);
+  await flow.handle('chat-a', '1');
+  assert.match(await flow.handle('chat-a', '3'), /खेती योग्य जमीन/u);
+  await flow.handle('chat-a', '1');
+  await flow.handle('chat-a', '2');
+  await flow.handle('chat-a', '2');
+  const result = await flow.handle('chat-a', '4');
+  assert.match(result, /अधिक जानकारी चाहिए/u);
+  assert.equal(calls.at(-1).profile.other_official_exclusion, null);
+  await flow.handle('chat-a', 'START');
+  await flow.handle('chat-a', '1');
+  await flow.handle('chat-a', '1');
+  assert.match(await flow.handle('chat-a', '5'), /सवाल-जवाब रोक दिया/u);
+});
+
 test('START asks language, then role, and farmer questions produce a sourced preliminary result', async () => {
   const { flow, calls } = conversation();
   assert.match(await flow.handle('chat-a', 'START'), /For Hindi, press 1/u);
@@ -40,18 +59,19 @@ test('START asks language, then role, and farmer questions produce a sourced pre
   assert.match(result, /जिन सवालों के जवाब बाकी हैं/u);
   assert.match(result, /कोई अन्य अपवाद/u);
   assert.match(result, /pmkisan.gov.in/u);
-  assert.equal(calls[0].profile.scheme_id, 'pm-kisan');
-  assert.equal(calls[0].profile.owns_cultivable_land, true);
-  assert.equal(calls[0].profile.income_tax_payer_last_year, false);
-  assert.equal(calls[0].profile.other_official_exclusion, null);
+  assert.equal(calls.at(-1).profile.scheme_id, 'pm-kisan');
+  assert.equal(calls.at(-1).profile.owns_cultivable_land, true);
+  assert.equal(calls.at(-1).profile.income_tax_payer_last_year, false);
+  assert.equal(calls.at(-1).profile.other_official_exclusion, null);
+  assert.match(result,/जिन सवालों के जवाब बाकी हैं/u);
 });
 
 test('failed and skipped conditions are reported separately with a way to restart', async () => {
   const { flow } = conversation();
   await startAndChoose(flow, 'chat-a', '2');
   await flow.handle('chat-a', '3');
-  for (const answer of ['yes', 'skip', 'yes', 'yes', 'no']) await flow.handle('chat-a', answer);
-  const result = await flow.handle('chat-a', 'no');
+  for (const answer of ['yes', 'skip', 'yes']) await flow.handle('chat-a', answer);
+  const result = await flow.handle('chat-a', 'yes');
   assert.match(result, /Coverage under EPF, ESIC or NPS was reported/u);
   assert.match(result, /Answers still needed:[\s\S]*monthly income/u);
   assert.match(result, /YOJANA START/u);
@@ -70,13 +90,14 @@ test('family questionnaire recommends PMUY only as a preliminary match with its 
   assert.match(result, /आवश्यक दस्तावेज़/u);
   assert.match(result, /Common Service Centre/u);
   assert.match(result, /locator\.csccloud\.in/u);
-  assert.equal(calls[0].profile.scheme_id, 'pmuy');
-  assert.equal(calls[0].profile.household_has_existing_lpg, false);
+  assert.equal(calls.at(-1).profile.scheme_id, 'pmuy');
+  assert.equal(calls.at(-1).profile.household_has_existing_lpg, false);
 });
 
 test('recommendation reply keeps a short summary, groups repeated source pages, and offers the manual CSC locator', async () => {
   const { flow } = conversation({
-    recommend() {
+    recommend({profile}) {
+      if(!profile.practising_registered_professional)return {results:[{status:'needs_information'}]};
       return {
         results: [{
           scheme_name: 'PM-KISAN',
@@ -92,8 +113,8 @@ test('recommendation reply keeps a short summary, groups repeated source pages, 
   });
   await startAndChoose(flow, 'chat-a', '2');
   await flow.handle('chat-a', '1');
-  for (const answer of ['yes', 'no', 'yes']) await flow.handle('chat-a', answer);
-  const result = await flow.handle('chat-a', 'no');
+  for (const answer of ['yes', 'no']) await flow.handle('chat-a', answer);
+  const result = await flow.handle('chat-a', 'yes');
   assert.match(result, /Does not match one or more checked conditions/u);
   assert.match(result, /Preliminary check only/u);
   assert.match(result, /page 2, page 3/u);
@@ -112,8 +133,8 @@ test('worker questionnaire checks only sourced PM-SYM conditions, including inco
   for (const answer of ['yes', 'yes', 'yes', 'no', 'no', 'no']) await flow.handle('chat-a', answer);
   const result = await flow.handle('chat-a', 'START');
   assert.match(result, /भाषा चुनें/u);
-  assert.equal(calls[0].profile.scheme_id, 'pm-sym');
-  assert.equal(calls[0].profile.monthly_income_at_most_15000, true);
+  assert.equal(calls.at(-1).profile.scheme_id, 'pm-sym');
+  assert.equal(calls.at(-1).profile.monthly_income_at_most_15000, true);
 });
 
 test('BACK repeats the previous question; CANCEL clears the active questionnaire', async () => {
@@ -124,7 +145,7 @@ test('BACK repeats the previous question; CANCEL clears the active questionnaire
   const previous = await flow.handle('chat-a', 'BACK');
   assert.match(previous, /खेती योग्य जमीन/u);
   assert.match(await flow.handle('chat-a', 'CANCEL'), /हटा दी गई/u);
-  assert.equal(calls.length, 0);
+  assert.equal(calls.filter(call=>call.question).length, 0);
 });
 
 test('student gets an information lead without a false current-eligibility match', async () => {

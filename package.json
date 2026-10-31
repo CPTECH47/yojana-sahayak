@@ -9,6 +9,8 @@
     "dev:client": "vite --host 127.0.0.1",
     "build": "vite build",
     "test": "node --test",
+    "check:release": "node scripts/release-check.mjs",
+    "test:ingest": "python -m unittest discover -s scripts -p test_*.py",
     "start": "node server/index.js"
   },
   "dependencies": {

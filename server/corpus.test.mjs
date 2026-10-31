@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { filterApprovedPassages, loadPassages } from './corpus.mjs';
+import { filterApprovedPassages, loadPassages, passageDigest } from './corpus.mjs';
+const seal=p=>({id:p.document_id,status:'approved',scheme_id:p.scheme_id,url:p.url,title:p.title,authority:p.authority,snapshot_sha256:p.snapshot_sha256,passage_hashes:{[p.id]:passageDigest(p)}});
 
 test('corpus loader returns only passages from approved manifest sources', () => {
   const passages = loadPassages(new Date('2026-10-31T12:00:00Z'));
@@ -20,13 +21,14 @@ test('corpus loader returns only passages from approved manifest sources', () =>
 });
 
 test('candidate, superseded and unregistered documents are excluded', () => {
+  const approved={id:'approved:1',document_id:'approved-doc',text:'approved evidence',snapshot_sha256:'a'.repeat(64)};
   const sources = [
-    { id: 'approved-doc', status: 'approved' },
+    seal(approved),
     { id: 'candidate-doc', status: 'needs_review' },
     { id: 'old-doc', status: 'superseded' },
   ];
   const passages = [
-    { document_id: 'approved-doc', text: 'approved evidence' },
+    approved,
     { document_id: 'candidate-doc', text: 'candidate evidence' },
     { document_id: 'old-doc', text: 'superseded evidence' },
     { document_id: 'missing-from-manifest', text: 'unregistered evidence' },
@@ -35,10 +37,16 @@ test('candidate, superseded and unregistered documents are excluded', () => {
 });
 
 test('expired approved evidence is automatically removed from retrieval', () => {
-  const sources = [{ id: 'timed', status: 'approved', valid_until: '2026-10-31' }];
-  const passages = [{ document_id: 'timed' }];
-  assert.deepEqual(filterApprovedPassages(passages, sources, new Date('2026-10-31T23:59:59Z')), passages);
-  assert.deepEqual(filterApprovedPassages(passages, sources, new Date('2026-11-01T00:00:00Z')), []);
+  const passages = [{id:'timed:1',document_id:'timed',snapshot_sha256:'a'.repeat(64)}];
+  const sources = [{...seal(passages[0]), valid_until:'2026-10-31'}];
+  assert.deepEqual(filterApprovedPassages(passages, sources, new Date('2026-10-31T18:29:59Z')), passages);
+  assert.deepEqual(filterApprovedPassages(passages, sources, new Date('2026-10-31T18:30:00Z')), []);
+});
+
+test('an approved document ID cannot approve altered text, hashes, URL or scheme',()=>{
+ const passage=loadPassages(new Date('2026-10-31T07:00:00Z'))[0],sources=[seal(passage)];
+ for(const change of [{text:'invented'},{snapshot_sha256:'b'.repeat(64)},{url:'https://example.invalid'},{scheme_id:'fake'}])
+   assert.deepEqual(filterApprovedPassages([{...passage,...change}],sources),[]);
 });
 
 test('approval filter fails closed when manifest inputs are malformed', () => {

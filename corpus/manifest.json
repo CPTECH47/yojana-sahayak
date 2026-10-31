@@ -9,7 +9,22 @@
       "url": "https://pmkisan.gov.in/Documents/RevisedPM-KISANOperationalGuidelines%28English%29.pdf",
       "format": "pdf",
       "published_at": null,
-      "status": "approved"
+      "status": "approved",
+      "snapshot_sha256": "ae82cac83f61a5fa5049387a7c13e00c6d55cef0e9163deb5497dc86c86d697f",
+      "passage_hashes": {
+        "pmkisan-guidelines:1": "3a9b91acbc10161284e20f64803421f263e3734085871aa7ea95db12a5b3b04e",
+        "pmkisan-guidelines:2": "2a55221ca2aaa49f33856fc9ee24867942de82677d7d3fd1f6a5314846142d0e",
+        "pmkisan-guidelines:3": "95bbb47796230487e074fcece345d045a8b3bae9478391e4c30d935e03024fdd",
+        "pmkisan-guidelines:4": "7760c48da7ac7c56383d3f3e86bc25ce4582257debd5a777dfd7f4b99627b73f",
+        "pmkisan-guidelines:5": "ba95efde053bfc9c6be117500599f4a2b87c87e04e30d9a593053b69c1ba7594",
+        "pmkisan-guidelines:6": "59fcf1172ffd457f568d31c82710bb9c23fcff0d784393b385b2617bd566d6d9",
+        "pmkisan-guidelines:7": "2059bc2133ace04501f23d7b0a27f98eeae9ef6e06500a2a5ab49125b497dcb4",
+        "pmkisan-guidelines:8": "a410141875444490ff641144aa678c797e036b1094902cc90ab01077a894f685",
+        "pmkisan-guidelines:9": "751fe45f995130fc157bca5b51a745435ea7b0e49ffcc4b52a9874a8530bb20c",
+        "pmkisan-guidelines:10": "a0ecf76e8e2653007a9982e4d1f6753a69884ec6a5153fbb6e55d30e9a3e969a",
+        "pmkisan-guidelines:11": "ae3edd53ab81c9abdf678721fb965680f0725dd1ee34e0660e0359f9e0deba45",
+        "pmkisan-guidelines:12": "65fd27e5bfc0a7c5a7e0275f40d7721c856ab88080d4674bca1c11c637d9d36c"
+      }
     },
     {
       "id": "pmkisan-instalments-2026",
@@ -20,7 +35,12 @@
       "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2225989&lang=1&reg=1",
       "format": "html",
       "published_at": "2026-02-10",
-      "status": "approved"
+      "status": "approved",
+      "snapshot_sha256": "674d03739d492c3082744d4d9feb09dda034564567b97998e1625b3f5a2ecd4e",
+      "passage_hashes": {
+        "pmkisan-instalments-2026:1": "8e7385213f1922e88de014549a9c14a27eeea75a9e76659dd6eef904a23924cb",
+        "pmkisan-instalments-2026:2": "2463cac4cbc899710c588cf4b82221f23d3b0c9bf85ed47c38978a68d81dd17d"
+      }
     },
     {
       "id": "nmms-2026-notice",
@@ -32,7 +52,17 @@
       "format": "html",
       "published_at": "2026-10-01",
       "status": "approved",
-      "valid_until": "2026-10-31"
+      "valid_until": "2026-10-31",
+      "snapshot_sha256": "ea1c7097530e3ec5f84a7a7f4a572e99b8d6c1c57e0f28850867b05d56067105",
+      "passage_hashes": {
+        "nmms-2026-notice:1": "eac0be462b639947202d8b85722bf7406f463379081d41c56dbca5dd41ee2dc9",
+        "nmms-2026-notice:2": "6662baa691c504740ee91bd53a80148de488171570fdf62e7f05f7c98eb7d8d1",
+        "nmms-2026-notice:3": "d074e51a33c481cb067ea1d18f94b938f8215df862082c98d276a40de8c813ad",
+        "nmms-2026-notice:4": "94a5760cc9ff4648574ef384da8da230c05ee4cc6685d3e2d0ab052f004b6d92",
+        "nmms-2026-notice:5": "705c49807151f4afb1b47c1e43681bb5f6b27f093bd2d064a0a211a91e781d3f",
+        "nmms-2026-notice:6": "87b803dc58014efe9ffa8a2b16569d691105458982cfbd0dc8ab6f04ac1f29c9",
+        "nmms-2026-notice:7": "959573fd01902d0cc894e7f7ebaa5a3a46e2141ea24cd5cbfe073693608baf1a"
+      }
     },
     {
       "id": "pmuy-faq",
@@ -50,7 +80,11 @@
       "extraction_status": "readable_html_reviewed",
       "review_note": "Reviewed Q1-Q6, Q12-Q19 and Q27-Q31. Eligibility facts are limited to the page wording; answer should direct applicants to the current KYC/guidelines for full conditions.",
       "scope_note": "Official site displays copyright and all-rights-reserved notice. Public repo stores metadata, hash and original paraphrased summaries only, not the raw HTML snapshot.",
-      "status": "approved"
+      "status": "approved",
+      "passage_hashes": {
+        "pmuy-faq:1": "8bb5a452864d28de4155241adbd93de6a5bfd7a9cfabe03fbc7012f9d0bc6cc8",
+        "pmuy-faq:2": "a56f06d21556ab7b08eba40ee7a4a3df68faba7a2101cda943ef5b313c8d7b9a"
+      }
     },
     {
       "id": "pmuy-new-connection",
@@ -68,7 +102,11 @@
       "extraction_status": "readable_html_reviewed",
       "review_note": "Page states applicant must be a woman aged 18+, household has no other OMC LPG connection, and poor-household status is based on deprivation declaration. Page links to current declaration form, whose PDF extraction was image-only and is not included as answer evidence.",
       "scope_note": "Official site displays copyright and all-rights-reserved notice. Public repo stores metadata, hash and original paraphrased summaries only, not the raw HTML snapshot.",
-      "status": "approved"
+      "status": "approved",
+      "passage_hashes": {
+        "pmuy-new-connection:1": "ad8d719c13f508f3fa956bb207536f6fc9291ef3c79b3eba2c3192cce85c38fb",
+        "pmuy-new-connection:2": "f2ca54abee274678da0b39bede576fdc2f9da4e5c72a986477f0e02edc9c5997"
+      }
     },
     {
       "id": "pmvishwakarma-scheme-booklet-2025",
@@ -87,7 +125,11 @@
       "extraction_status": "text_extracted_and_page_reviewed",
       "review_note": "Reviewed printed pages 34-35 (PDF pages 36-37), benefits, application route and the 18 trades. This is a dated 2025 booklet; check current official portal for amendments before advising an application.",
       "scope_note": "Do not treat the booklet as proof of current operational availability; dated values are always attributed to the 2025 edition.",
-      "status": "approved"
+      "status": "approved",
+      "passage_hashes": {
+        "pmvishwakarma-scheme-booklet-2025:1": "38be5e981dc0c813198b122f44cbd55a172eb77b53b12b653bd2e70889aa865c",
+        "pmvishwakarma-scheme-booklet-2025:2": "354403703d348558a451e32f90902813fe52bce98b9b7993cdb93ff464c99cc6"
+      }
     },
     {
       "id": "pm-sym-ministry-note-2025",
@@ -105,7 +147,12 @@
       "page_count": 6,
       "extraction_status": "text_extracted_and_page_reviewed",
       "review_note": "Reviewed pages 1-4 for scheme purpose, stated eligibility/exclusions, benefit and enrolment route. It is ministry public information, not a substitute for current enrolment validation.",
-      "status": "approved"
+      "status": "approved",
+      "passage_hashes": {
+        "pm-sym-ministry-note-2025:1": "82abceb97c9c4ff96b1c6c1968db62a37c13f3caa00922157675975e7156841c",
+        "pm-sym-ministry-note-2025:2": "30f2188a282e522d859b8e49392e38b2569052e2ee0b4954b16ed2c3ff7fcfc1",
+        "pm-sym-ministry-note-2025:3": "5b3823fc469e20f94c94dbdb9696c5b0a88c2b12a66f703d75f75e4001ae9edc"
+      }
     },
     {
       "id": "nsp-scholarships-2026",
@@ -124,7 +171,10 @@
       "extraction_status": "readable_html_reviewed",
       "review_note": "Reviewed current Academic Year 2026-27 NMMSS listing. Student application date is time-sensitive and evidence expires after 2026-10-31; never reuse beyond that date without rechecking NSP.",
       "scope_note": "The page is an official live listing, not a full eligibility guideline.",
-      "status": "approved"
+      "status": "approved",
+      "passage_hashes": {
+        "nsp-scholarships-2026:1": "0b1ff0583ed6ac5a8ea218a12fb094ff9c2d2bf882ceb4d7e3105e025d36b3d6"
+      }
     },
     {
       "id": "pmkisan-home-2026",
@@ -142,7 +192,11 @@
       "extraction_status": "readable_html_reviewed",
       "review_note": "Reviewed scheme summary, official exclusion summary, eKYC notice and instruction to use Know Your Status/Kisan eMitra for account-level status. Treat account status as live and refer users to official portal.",
       "scope_note": "Official portal display may change; cited snapshot is dated and must be refreshed before deadline/current-status answers.",
-      "status": "approved"
+      "status": "approved",
+      "passage_hashes": {
+        "pmkisan-home-2026:1": "cd9ced7a05ffd8cf5bb97d572bc4587b8e2dafa6d4d9352dc57814ceeb23729b",
+        "pmkisan-home-2026:2": "5f83042b81500523e409125cd1079c2ae9b8f2c6e733d28681ac830810ac4c5c"
+      }
     },
     {
       "id": "pmkisan-ekyc-methods",
@@ -160,7 +214,10 @@
       "page_count": 2,
       "extraction_status": "text_extracted_and_reviewed",
       "review_note": "Document describes OTP, biometric and face-authentication eKYC methods and their steps. It has no visible publication date in the extracted text and may be older; answer must label it as a portal note and say to verify current availability on PM-KISAN.",
-      "status": "approved"
+      "status": "approved",
+      "passage_hashes": {
+        "pmkisan-ekyc-methods:1": "1928928074273d9cdaafff0a8c1a786fcb373c06ff0f98237ac6329314fdcf1d"
+      }
     },
     {
       "id": "pmuy-declaration-form-2026",

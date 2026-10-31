@@ -1,4 +1,5 @@
 import { loadPassages } from './corpus.mjs';
+import { memoryStore } from './local-store.mjs';
 
 function normalize(text) {
   return String(text ?? '').trim().normalize('NFC').toLocaleLowerCase().replace(/[.!?।,]/gu, '').trim();
@@ -27,8 +28,8 @@ function rolePrompt(language, error = false) {
 
 function intro(language) {
   return language === 'hi'
-    ? 'मैं कुछ छोटे सवाल पूछूँगा। जवाब इस चल रहे चैट सत्र में अस्थायी रूप से रखे जाएँगे। आधार, बैंक विवरण या कोई पहचान संख्या न भेजें। भाषा बदलने के लिए YOJANA ENGLISH भेजें।'
-    : 'I’ll ask a few short questions. Your answers stay temporarily in this running chat session. Do not send Aadhaar, bank details, or ID numbers. Send YOJANA HINDI to switch languages.';
+    ? 'डेमो में केवल काल्पनिक जानकारी दें। आधार, बैंक विवरण या पहचान संख्या न भेजें। सवाल कभी भी पूछ सकते हैं। उत्तर सत्र में रहेंगे; SAVE से सहमति देकर 30 दिन के लिए सहेज सकते हैं।'
+    : 'Use fictional information for this demo. Do not send Aadhaar, bank details, or ID numbers. Ask a question at any time. Answers stay in this session; SAVE explicitly consents to saving them for 30 days.';
 }
 
 const questionSets = {
@@ -62,10 +63,10 @@ const roleNames = {
 function currentQuestion(state, error = false) {
   const language = state.language;
   const item = questionSets[state.role][state.index];
-  const lead = error ? (language === 'hi' ? 'जवाब समझ नहीं आया। कृपया हाँ / नहीं लिखें, या BACK, SKIP, CANCEL चुनें।\n' : 'I didn’t understand that. Reply YES or NO, or use BACK, SKIP, or CANCEL.\n') : '';
-  const answerHint = language === 'hi' ? '\nजवाब: हाँ / नहीं' : '\nAnswer: YES / NO';
+  const lead = error ? (language === 'hi' ? 'जवाब समझ नहीं आया। कृपया नीचे दिए गए विकल्पों में से चुनें।\n' : 'I didn’t understand that. Reply YES or NO, or use BACK, SKIP, or CANCEL.\n') : '';
+  const answerHint = language === 'hi' ? '\n1 हाँ\n2 नहीं\n3 पिछला सवाल (BACK)\n4 पता नहीं (SKIP)\n5 रोकें (CANCEL)' : '\nAnswer: YES / NO';
   const controls = language === 'hi'
-    ? '\nपिछले सवाल पर लौटें: BACK · पता न हो: SKIP · रोकें: CANCEL'
+    ? '\nविकल्प का नंबर भेजें। हाँ, नहीं, BACK, SKIP या CANCEL भी लिख सकते हैं।'
     : '\nCorrect the previous answer: BACK · Unsure: SKIP · Stop: CANCEL';
   return `${lead}${state.index + 1}/${questionSets[state.role].length}. ${item[language]}${answerHint}${controls}`;
 }
@@ -91,7 +92,7 @@ function parseYesNo(text) {
 
 function formatRecommendation(result, language) {
   const item = result.results?.[0];
-  if (!item) return language === 'hi' ? 'अभी सुझाव नहीं बन पाया। कृपया बाद में फिर कोशिश करें।' : 'I could not prepare a suggestion just now. Please try again.';
+  if (!item) return language === 'hi' ? 'सुझाव के लिए जरूरी जाँचे गए स्रोत उपलब्ध नहीं हैं। कृपया आधिकारिक कार्यालय से पुष्टि करें।' : 'The reviewed evidence required for this check is unavailable. Please confirm with the official office.';
   const status = item.status === 'potential_match'
     ? (language === 'hi' ? 'चुनी गई शर्तों के आधार पर संभावित मेल' : 'Possible match based on checked conditions')
     : item.status === 'not_matched'
@@ -100,7 +101,7 @@ function formatRecommendation(result, language) {
   const citationLabel = language === 'hi' ? 'स्रोत' : 'Source';
   const explanation = item.reasons?.map(reason => `• ${reason}`).join('\n') || '';
   const questions = Object.values(questionSets).flat();
-  const missing = (item.missing_fields || []).map(key => questions.find(question => question.key === key)?.[language]).filter(Boolean);
+  const missing = (item.missing_fields || []).map(key => questions.find(question => question.key === key)?.[language] || key);
   const missingText = missing.length
     ? `\n${language === 'hi' ? '• जिन सवालों के जवाब बाकी हैं:' : '• Answers still needed:'}\n${missing.map(question => `  ◦ ${question}`).join('\n')}`
     : '';
@@ -139,6 +140,7 @@ function infoOnly(role, language, passages) {
   }
   if (role === 'artisan') {
     const p = passages.find(item => item.document_id === 'pmvishwakarma-scheme-booklet-2025');
+    if(!p)return language==='hi'?'कारीगरों की पात्रता जाँच के लिए जाँचा गया स्रोत अभी उपलब्ध नहीं है। आधिकारिक PM Vishwakarma पोर्टल देखें: https://pmvishwakarma.gov.in/':'Reviewed artisan evidence is unavailable. Check the official PM Vishwakarma portal: https://pmvishwakarma.gov.in/';
     const text = language === 'hi'
       ? 'कारीगरों के लिए PM Vishwakarma देखना उपयोगी हो सकता है। उपलब्ध 2025 मंत्रालय पुस्तिका में 18 पारंपरिक ट्रेड और सहायता का वर्णन है; यह पूरी वर्तमान पात्रता की पुष्टि नहीं करती।\nवर्तमान जानकारी: https://pmvishwakarma.gov.in/'
       : 'PM Vishwakarma may be relevant to an artisan. The available 2025 Ministry booklet describes 18 traditional trades and support, but it does not confirm full current eligibility.\nCurrent information: https://pmvishwakarma.gov.in/';
@@ -150,9 +152,31 @@ function infoOnly(role, language, passages) {
 }
 
 // Language and profile answers are kept per direct chat in process memory and cleared on completion/restart.
-export function createWhatsAppConversation({ answers, match, passages = loadPassages() }) {
+export function createWhatsAppConversation({ answers, passages, store = memoryStore(), now = Date.now }) {
   const languageByChat = new Map();
   const questionnaireByChat = new Map();
+  const completedByChat = new Map();
+  const touched = new Map();
+  function saved(chatId) {
+    const id=store.id(chatId), value=store.get('profiles',id);
+    if(value?.expires_at<=now()){store.delete('profiles',id);return null;}
+    return value;
+  }
+  function remember(chatId,state) {
+    const completed={...(saved(chatId)?.profiles||{}),...(completedByChat.get(chatId)||{}),[state.profile.scheme_id]:state.profile};
+    completedByChat.set(chatId,completed);
+    const old=saved(chatId);
+    if(old?.storage_consent)store.put('profiles',store.id(chatId),{...old,language:state.language,profile:state.profile,profiles:completed});
+  }
+  function resultControls(language) {
+    return language==='hi'?'सुधार: EDIT 1 (सवाल का नंबर), आगे: NEXT, दूसरी भूमिका: ROLE, सहेजें: SAVE, फिर खोलें: RESUME, अपडेट: ALERTS ON, बंद: STOP, मिटाएँ: DELETE।':'Correct: EDIT 1 (question number), continue: NEXT, another role: ROLE, save: SAVE, resume: RESUME, updates: ALERTS ON, unsubscribe: STOP, erase: DELETE.';
+  }
+  async function answerQuestion(chatId,text,language) {
+    const result=await answers.chat({question:text,language});
+    const mode=result.mode==='extractive'?(language==='hi'?'जाँचे गए रिकॉर्ड का उत्तर (स्थानीय मॉडल उपलब्ध नहीं था)।\n':'Answer from reviewed records (local model unavailable).\n'):'';
+    return mode+(result.answer_text || (language==='hi'?'उत्तर उपलब्ध नहीं है।':'No answer is available.'))+
+      (result.citations?.length?'\n'+result.citations.map(c=>(language==='hi'?'स्रोत: ':'Source: ')+c.title+', '+c.locator+' — '+c.url).join('\n'):'');
+  }
 
   async function beginProfile(chatId, language) {
     languageByChat.set(chatId, language);
@@ -162,13 +186,51 @@ export function createWhatsAppConversation({ answers, match, passages = loadPass
 
   async function handle(chatId, text) {
     if (!chatId) throw new TypeError('A direct-chat identifier is required');
+    if(typeof text!=='string' || text.length>1000)return 'Please send a short text question (up to 1000 characters).';
+    for(const [id,at] of touched)if(now()-at>86400000){touched.delete(id);languageByChat.delete(id);questionnaireByChat.delete(id);completedByChat.delete(id);}
+    if(!touched.has(chatId) && touched.size>=2000)return 'The service is busy. Please try again later.';
+    touched.set(chatId,now());
     const value = normalize(text);
     const state = questionnaireByChat.get(chatId);
+    const language=languageByChat.get(chatId)||saved(chatId)?.language||'en';
+    if(value==='delete') {
+      store.delete('profiles',store.id(chatId));
+      for(const [key,a] of store.entries('alerts'))if(a.profile_id===store.id(chatId))store.delete('alerts',key);
+      questionnaireByChat.delete(chatId);completedByChat.delete(chatId);languageByChat.delete(chatId);
+      return language==='hi'?'सहेजी गई जानकारी और अपडेट की सहमति मिटा दी गई।':'Saved profile and update consent deleted.';
+    }
+    if(['stop','alerts off'].includes(value)){
+      const old=saved(chatId);if(old)store.put('profiles',store.id(chatId),{...old,alert_opt_in:false,recipient:null});
+      for(const [key,a] of store.entries('alerts'))if(a.profile_id===store.id(chatId)&&a.status==='queued')store.put('alerts',key,{...a,status:'cancelled'});
+      return language==='hi'?'योजना अपडेट बंद हैं।':'Scheme updates are off.';
+    }
+    if(value==='save'){
+      const profiles=completedByChat.get(chatId);
+      if(!profiles || !Object.keys(profiles).length)return language==='hi'?'पहले नमूना जाँच पूरी करें।':'Complete a fictional profile check first.';
+      const old=saved(chatId);
+      store.put('profiles',store.id(chatId),{...old,storage_consent:true,alert_opt_in:old?.alert_opt_in||false,language,
+        profile:state?.profile || Object.values(profiles).at(-1),profiles,expires_at:now()+30*86400000});
+      return language==='hi'?'आपकी सहमति से नमूना जानकारी 30 दिन के लिए सहेजी गई। RESUME से खोलें; DELETE से मिटाएँ। अपडेट पाने के लिए अलग से ALERTS ON भेजें।':'With your consent, the fictional profile is saved for 30 days. RESUME to reopen or DELETE to erase. Send ALERTS ON separately if you want reviewed scheme updates.';
+    }
+    if(value==='alerts on'){
+      const old=saved(chatId);
+      if(!old?.storage_consent)return language==='hi'?'पहले SAVE से नमूना जानकारी सहेजने की सहमति दें।':'First consent to saving a fictional profile with SAVE.';
+      store.put('profiles',store.id(chatId),{...old,alert_opt_in:true,recipient:chatId});
+      return language==='hi'?'जाँचे गए प्रासंगिक योजना अपडेट की सहमति दर्ज है। STOP से बंद करें। इस पायलट में भेजना संचालक के टेस्ट मोड पर निर्भर है।':'Consent for relevant reviewed scheme updates is recorded. STOP unsubscribes. Sending in this pilot depends on the operator enabling consenting-test delivery.';
+    }
+    if(value==='resume'){
+      const old=saved(chatId);
+      if(!old)return language==='hi'?'कोई सहेजी गई जानकारी नहीं है। START भेजें।':'No saved profile. Send START.';
+      languageByChat.set(chatId,old.language);completedByChat.set(chatId,old.profiles || {[old.profile.scheme_id]:old.profile});
+      const role=old.profile.scheme_id==='pm-kisan'?'farmer':old.profile.scheme_id==='pmuy'?'family':'worker';
+      questionnaireByChat.set(chatId,{phase:'complete',language:old.language,role,profile:old.profile,index:0});
+      return formatRecommendation(answers.recommend({profile:old.profile,language:old.language}),old.language)+'\n'+resultControls(old.language);
+    }
 
     if (isStart(text)) {
       languageByChat.delete(chatId);
       questionnaireByChat.set(chatId, { phase: 'language' });
-      return languagePrompt();
+      return languagePrompt()+(saved(chatId)?'\nRESUME: saved fictional profile / सहेजी गई नमूना जानकारी':'');
     }
 
     if (state?.phase === 'language' || !languageByChat.has(chatId)) {
@@ -196,9 +258,23 @@ export function createWhatsAppConversation({ answers, match, passages = loadPass
       return language === 'hi' ? 'ठीक है। नया सुझाव शुरू करने के लिए START लिखें।' : 'Okay. Send START to begin a new suggestion.';
     }
 
-    if (/^cancel$/iu.test(value) && state) {
+    if ((/^cancel$/iu.test(value) || (state?.phase === 'questions' && state.language === 'hi' && value === '5')) && state) {
       questionnaireByChat.delete(chatId);
       return state.language === 'hi' ? 'सवाल-जवाब रोक दिया गया। आपकी प्रोफ़ाइल इस सत्र से हटा दी गई।' : 'Questionnaire cancelled. Your profile has been cleared from this session.';
+    }
+
+    if(value==='role' && languageByChat.has(chatId)){
+      questionnaireByChat.set(chatId,{phase:'role',language,profile:{}});
+      return rolePrompt(language);
+    }
+    const edit=/^edit\s+([1-6])$/u.exec(value);
+    if(edit && state?.role && questionSets[state.role]?.[Number(edit[1])-1]){
+      const next={...state,phase:'questions',index:Number(edit[1])-1};
+      questionnaireByChat.set(chatId,next);return currentQuestion(next);
+    }
+    // Let users ask factual questions without losing their active questionnaire.
+    if((/[?？]/u.test(text) || /^(?:ask\s|what\b|how\b|who\b|when\b|क्या|कितन|कैसे|कब)/iu.test(text)) && languageByChat.has(chatId)){
+      return await answerQuestion(chatId,text.replace(/^ask\s+/i,''),language);
     }
 
     if (state?.phase === 'role') {
@@ -206,7 +282,7 @@ export function createWhatsAppConversation({ answers, match, passages = loadPass
       if (!role) return rolePrompt(state.language, true);
       if (!questionSets[role]) {
         questionnaireByChat.delete(chatId);
-        return `${infoOnly(role, state.language, passages)}\n\n${state.language === 'hi' ? 'अब आप योजना से जुड़ा सवाल पूछ सकते हैं।' : 'You can now ask a scheme question.'}`;
+        return `${infoOnly(role, state.language, passages ?? loadPassages())}\n\n${state.language === 'hi' ? 'अब सवाल पूछें या दूसरी भूमिका के लिए YOJANA ROLE भेजें।' : 'Ask a question now, or send YOJANA ROLE to add another role.'}`;
       }
       const next = { ...state, phase: 'questions', role, index: 0, profile: { scheme_id: role === 'farmer' ? 'pm-kisan' : role === 'family' ? 'pmuy' : 'pm-sym' } };
       questionnaireByChat.set(chatId, next);
@@ -222,34 +298,42 @@ export function createWhatsAppConversation({ answers, match, passages = loadPass
         questionnaireByChat.set(chatId, next);
         return rolePrompt(state.language);
       }
-      if (value === 'back') {
+      if (value === 'back' || (state.language === 'hi' && value === '3')) {
         if (state.index === 0) return currentQuestion(state);
         const next = { ...state, index: state.index - 1 };
         questionnaireByChat.set(chatId, next);
         return currentQuestion(next);
       }
-      const answer = parseYesNo(text);
+      const hindiChoice = state.language === 'hi' ? { '1': true, '2': false, '4': null } : {};
+      const answer = Object.hasOwn(hindiChoice, value) ? hindiChoice[value] : parseYesNo(text);
       if (answer === undefined) return currentQuestion(state, true);
       const step = questionSets[state.role][state.index];
       const profile = { ...state.profile, [step.key]: answer };
+      const partial=answers.recommend({profile,language:state.language});
       const nextIndex = state.index + 1;
-      if (nextIndex < questionSets[state.role].length) {
+      if (nextIndex < questionSets[state.role].length && partial.results?.[0]?.status!=='not_matched') {
         const next = { ...state, profile, index: nextIndex };
         questionnaireByChat.set(chatId, next);
         return currentQuestion(next);
       }
 
-      questionnaireByChat.delete(chatId);
+      const completed={...state,phase:'complete',profile,index:nextIndex};
+      questionnaireByChat.set(chatId,completed);
+      remember(chatId,completed);
       try {
         const result = answers.recommend({ profile, language: state.language });
-        return `${formatRecommendation(result, state.language)}\n\n${state.language === 'hi' ? 'अब आप योजना के बारे में सवाल पूछ सकते हैं। नई शुरुआती जाँच के लिए YOJANA START भेजें।' : 'You can now ask a scheme question. Send YOJANA START for another preliminary check.'}`;
+        return `${formatRecommendation(result, state.language)}\n\n${resultControls(state.language)}`;
       } catch {
         return state.language === 'hi' ? 'सुझाव सेवा अभी उपलब्ध नहीं है। बाद में फिर कोशिश करें।' : 'The recommendation service is unavailable. Please try again later.';
       }
     }
 
-    if (/^match\b/i.test(value)) return match(text, languageByChat.get(chatId) || 'en');
-    const language = languageByChat.get(chatId) || 'en';
+    if(value==='next' && state?.phase==='complete'){
+      const missing=questionSets[state.role].findIndex(q=>typeof state.profile[q.key]!=='boolean');
+      if(missing>=0){const next={...state,phase:'questions',index:missing};questionnaireByChat.set(chatId,next);return currentQuestion(next);}
+      return resultControls(language);
+    }
+    if (/^match\b/i.test(value)) return language==='hi'?'नमूना जाँच के लिए START भेजें।':'Send START for the named fictional questionnaire.';
     let result;
     try {
       result = await answers.chat({ question: text, language });
@@ -268,6 +352,7 @@ export function createWhatsAppConversation({ answers, match, passages = loadPass
 
   function acceptsBareQuestionnaireReply(chatId, text) {
     const phase = questionnaireByChat.get(chatId)?.phase;
+    if((phase || saved(chatId)) && /^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next|cancel)$/iu.test(normalize(text)))return true;
     if (phase === 'language') return ['1', '2'].includes(normalize(text));
     return (phase === 'role' || phase === 'questions') && Boolean(String(text ?? '').trim());
   }

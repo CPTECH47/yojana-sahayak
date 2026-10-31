@@ -13,14 +13,14 @@
 2. The bot greets the person and asks them to reply `1` for Hindi or `2` for English. It then asks for a role: farmer, student, worker, artisan, family/other, or volunteer.
 3. Farmers, families, and workers get short scheme-specific questions. Once the questionnaire starts, the user can reply naturally with a number, YES/NO, BACK, SKIP, or CANCEL without repeating the prefix. Outside the active questionnaire, a `YOJANA ` prefix is still required during personal-number testing. Invalid replies prompt the same question again; `BACK` lets the user correct the previous answer. `SKIP` leaves the field unknown.
 4. The bot checks selected PM-KISAN, PMUY, or PM-SYM rules against reviewed passages and returns a cited preliminary result. Student and artisan paths show an official information link but do not claim an eligibility match.
-5. Answers stay in per-chat process memory until completion or restart. The bot asks for no Aadhaar or bank details. It does not make an official eligibility decision.
+5. Unsaved answers stay in process memory. Completed answers remain editable during the session. SAVE separately consents to encrypted local retention of fictional answers for 30 days; RESUME restores and re-evaluates them after restart. ALERTS ON separately opts into reviewed updates, STOP revokes delivery consent, and DELETE erases saved profile information. The bot asks for no Aadhaar or bank details.
 6. For ordinary scheme questions, the bot retrieves approved passages and includes source title, authority, locator and URL. Time-sensitive sources expire from retrieval.
 
 ## How the pilot reduces unsupported answers
 
 - Retrieval reads only manifest sources marked `approved`; expired sources are filtered out by date.
 - The model is given retrieved passages and constrained to cite only their evidence IDs. A missing passage, empty draft, or unsupported evidence ID produces an insufficient-evidence response.
-- Every numeric claim in the draft must appear in the cited passages. This blocks many invented amounts, percentages and dates.
+- The model selects only fact IDs from retrieved pinned records. Final bilingual wording comes from those records, including amounts and periods; model prose and model-generated links are never displayed.
 - Scheme checks are explicit code and cite PM-KISAN, PMUY or PM-SYM sources. Unknown profile answers remain `needs_information`; results say `official_decision: false`.
 - Dates and version context are retained with source records; the bot points to live official status checks when the result depends on an individual application.
 

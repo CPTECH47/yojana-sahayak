@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const corpusPath = fileURLToPath(new URL('../corpus/passages.json', import.meta.url));
@@ -17,13 +18,25 @@ export function schemeFromText(text) {
   return Object.entries(schemes).find(([, scheme]) => scheme.aliases.some(alias => alias.test(text)))?.[0] ?? null;
 }
 
+export function passageDigest(passage) {
+  const keys = ['id', 'document_id', 'scheme_id', 'title', 'authority', 'url', 'published_at', 'verified_at', 'snapshot_sha256', 'locator', 'text'];
+  return createHash('sha256').update(JSON.stringify(keys.map(key => passage[key] ?? null))).digest('hex');
+}
+
 export function filterApprovedPassages(passages, sources, asOf = new Date()) {
   if (!Array.isArray(passages) || !Array.isArray(sources)) throw new Error('Corpus passages and manifest sources must be arrays');
-  const day = asOf.toISOString().slice(0, 10);
-  const approvedIds = new Set(sources.filter(source => source?.status === 'approved'
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(asOf);
+  const approved = new Map(sources.filter(source => source?.status === 'approved'
     && typeof source.id === 'string'
-    && (!source.valid_until || source.valid_until >= day)).map(source => source.id));
-  return passages.filter(passage => approvedIds.has(passage.document_id));
+    && /^[a-f0-9]{64}$/.test(source.snapshot_sha256 || '')
+    && (!source.valid_until || (/^\d{4}-\d{2}-\d{2}$/.test(source.valid_until) && source.valid_until >= day))).map(source => [source.id, source]));
+  return passages.filter(passage => {
+    const source = approved.get(passage.document_id);
+    return source && passage.scheme_id === source.scheme_id && passage.url === source.url
+      && passage.title === source.title && passage.authority === source.authority
+      && passage.snapshot_sha256 === source.snapshot_sha256
+      && source.passage_hashes?.[passage.id] === passageDigest(passage);
+  });
 }
 
 export function loadPassages(asOf = new Date()) {
