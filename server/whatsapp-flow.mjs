@@ -1,4 +1,5 @@
-import { loadPassages } from './corpus.mjs';
+import { loadPassages, schemeFromText } from './corpus.mjs';
+import { topicFor } from './verified-facts.mjs';
 import { memoryStore } from './local-store.mjs';
 
 function normalize(text) {
@@ -22,8 +23,8 @@ function languagePrompt() {
 
 function rolePrompt(language, error = false) {
   const lead = error ? (language === 'hi' ? 'कृपया सूची में से एक विकल्प चुनें।\n' : 'Please choose one of the listed options.\n') : '';
-  if (language === 'hi') return `${lead}आपके लिए उपयोगी योजना जानकारी ढूँढने के लिए, अपना विकल्प चुनें:\n1 किसान\n2 विद्यार्थी\n3 कामगार\n4 कारीगर\n5 परिवार का सदस्य / अन्य नागरिक\n6 किसी व्यक्ति की मदद करने वाला स्वयंसेवक\n\nनीचे केवल विकल्प का नंबर भेजें।`;
-  return `${lead}Which best describes you? I’ll use this to find relevant scheme information.\n1 Farmer\n2 Student\n3 Worker\n4 Artisan or craft worker\n5 Family member / other citizen\n6 Volunteer helping someone\n\nReply with the number.`;
+  if (language === 'hi') return `${lead}आपके लिए उपयोगी योजना जानकारी ढूँढने के लिए, अपना विकल्प चुनें:\n1 किसान\n2 विद्यार्थी\n3 कामगार\n4 कारीगर\n5 परिवार का सदस्य / अन्य नागरिक\n\nनीचे केवल विकल्प का नंबर भेजें।`;
+  return `${lead}Which best describes you? I’ll use this to find relevant scheme information.\n1 Farmer\n2 Student\n3 Worker\n4 Artisan or craft worker\n5 Family member / other citizen\n\nReply with the number.`;
 }
 
 function intro(language) {
@@ -78,7 +79,7 @@ function parseRole(text) {
   if (value === '3' || /कामगार|मजदूर|worker/u.test(value)) return 'worker';
   if (value === '4' || /कारीगर|शिल्पकार|artisan|craft/u.test(value)) return 'artisan';
   if (value === '5' || /परिवार|नागरिक|family|citizen|other/u.test(value)) return 'family';
-  if (value === '6' || /स्वयंसेवक|volunteer|help.?desk/u.test(value)) return 'volunteer';
+  if (/स्वयंसेवक|volunteer|help.?desk/u.test(value)) return 'volunteer';
   return null;
 }
 
@@ -154,6 +155,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   const languageByChat = new Map();
   const questionnaireByChat = new Map();
   const completedByChat = new Map();
+  const lastSchemeByChat = new Map();
   const touched = new Map();
   const awaitingCsc = new Map();
   const awaitingCscOffer = new Map();
@@ -172,7 +174,15 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     if(old?.storage_consent)store.put('profiles',store.id(chatId),{...old,language:state.language,profile:state.profile,profiles:completed});
   }
   async function answerQuestion(chatId,text,language) {
-    const result=await answers.chat({question:text,language});
+    const active=questionnaireByChat.get(chatId);
+    const scheme_id=schemeFromText(text) || active?.profile?.scheme_id || lastSchemeByChat.get(chatId) || null;
+    if(scheme_id)lastSchemeByChat.set(chatId,scheme_id);
+    if (active?.phase==='complete' && scheme_id===active.profile?.scheme_id && /^(?:am i eligible|do i qualify|क्या मैं पात्र हूँ|क्या मैं योग्य हूँ)[?？]?$/iu.test(String(text).trim())) {
+      return formatRecommendation(answers.recommend({profile:active.profile,language}),language);
+    }
+    let result;
+    try { result=await answers.chat({question:text,language,...(scheme_id?{scheme_id}:{})}); }
+    catch { return language==='hi'?'उत्तर सेवा अभी उपलब्ध नहीं है। कृपया बाद में पूछें।':'The answer service is unavailable. Please try again later.'; }
     const mode=result.mode==='extractive'?(language==='hi'?'जाँचे गए रिकॉर्ड का उत्तर (स्थानीय मॉडल उपलब्ध नहीं था)।\n':'Answer from reviewed records (local model unavailable).\n'):'';
     return mode+(result.answer_text || (language==='hi'?'उत्तर उपलब्ध नहीं है।':'No answer is available.'))+
       (result.citations?.length?'\n'+result.citations.map(c=>(language==='hi'?'स्रोत: ':'Source: ')+c.title+', '+c.locator+' — '+c.url).join('\n'):'');
@@ -187,7 +197,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   async function handle(chatId, text) {
     if (!chatId) throw new TypeError('A direct-chat identifier is required');
     if(typeof text!=='string' || text.length>1000)return 'Please send a short text question (up to 1000 characters).';
-    for(const [id,at] of touched)if(now()-at>86400000){touched.delete(id);languageByChat.delete(id);questionnaireByChat.delete(id);completedByChat.delete(id);awaitingCsc.delete(id);awaitingCscOffer.delete(id);}
+    for(const [id,at] of touched)if(now()-at>86400000){touched.delete(id);languageByChat.delete(id);questionnaireByChat.delete(id);completedByChat.delete(id);lastSchemeByChat.delete(id);awaitingCsc.delete(id);awaitingCscOffer.delete(id);}
     if(!touched.has(chatId) && touched.size>=2000)return 'The service is busy. Please try again later.';
     touched.set(chatId,now());
     const value = normalize(text);
@@ -227,7 +237,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     if(value==='delete') {
       store.delete('profiles',store.id(chatId));
       for(const [key,a] of store.entries('alerts'))if(a.profile_id===store.id(chatId))store.delete('alerts',key);
-      questionnaireByChat.delete(chatId);completedByChat.delete(chatId);languageByChat.delete(chatId);awaitingCscOffer.delete(chatId);awaitingCsc.delete(chatId);
+      questionnaireByChat.delete(chatId);completedByChat.delete(chatId);languageByChat.delete(chatId);lastSchemeByChat.delete(chatId);awaitingCscOffer.delete(chatId);awaitingCsc.delete(chatId);
       return language==='hi'?'सहेजी गई जानकारी और अपडेट की सहमति मिटा दी गई।':'Saved profile and update consent deleted.';
     }
     if(['stop','alerts off'].includes(value)){
@@ -261,12 +271,18 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     }
 
     if (isStart(text)) {
-      awaitingCsc.delete(chatId);awaitingCscOffer.delete(chatId);
+      awaitingCsc.delete(chatId);awaitingCscOffer.delete(chatId);lastSchemeByChat.delete(chatId);
       languageByChat.delete(chatId);
       questionnaireByChat.set(chatId, { phase: 'language' });
       return languagePrompt()+(saved(chatId)?'\nRESUME: saved fictional profile / सहेजी गई नमूना जानकारी':'');
     }
 
+    if ((state?.phase === 'language' || !languageByChat.has(chatId)) && schemeFromText(text) && topicFor(text)) {
+      const inferredLanguage=/[\u0900-\u097f]/u.test(text)?'hi':'en';
+      languageByChat.set(chatId,inferredLanguage);
+      if(state?.phase==='language')questionnaireByChat.delete(chatId);
+      return answerQuestion(chatId,text,inferredLanguage);
+    }
     if (state?.phase === 'language' || !languageByChat.has(chatId)) {
       const language = requestedLanguage(text, true);
       if (!language) {
@@ -368,20 +384,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       return resultControls(language);
     }
     if (/^match\b/i.test(value)) return language==='hi'?'नमूना जाँच के लिए START भेजें।':'Send START for the named fictional questionnaire.';
-    let result;
-    try {
-      result = await answers.chat({ question: text, language });
-    } catch {
-      return language === 'hi'
-        ? 'स्थानीय उत्तर सेवा अभी उपलब्ध नहीं है। कृपया थोड़ी देर बाद फिर पूछें।'
-        : 'The local answer service is unavailable. Please try again shortly.';
-    }
-    let reply = result.answer_text;
-    if (result.citations?.length) {
-      const sourceLabel = language === 'hi' ? 'स्रोत' : 'Source';
-      reply += '\n' + result.citations.map(c => `${sourceLabel}: ${c.title}, ${c.locator} — ${c.url}`).join('\n');
-    }
-    return reply;
+    return answerQuestion(chatId,text,language);
   }
 
   function acceptsBareQuestionnaireReply(chatId, text) {
@@ -393,5 +396,5 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     return (phase === 'role' || phase === 'questions') && Boolean(String(text ?? '').trim());
   }
 
-  return { handle, acceptsBareQuestionnaireReply, choosingLanguage: chatId => questionnaireByChat.get(chatId)?.phase === 'language', selectedLanguage: chatId => ['role','questions'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
+  return { handle, answerQuestion, acceptsBareQuestionnaireReply, choosingLanguage: chatId => questionnaireByChat.get(chatId)?.phase === 'language', selectedLanguage: chatId => ['role','questions'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
 }

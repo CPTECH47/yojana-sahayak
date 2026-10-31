@@ -21,6 +21,14 @@ test('an unseen Hindi question selects reviewed facts and renders pinned Hindi t
   assert.equal(result.language, 'hi');
 });
 
+test('a follow-up question can use the selected scheme while keeping approved citations',async()=>{
+  const model=async()=>({fact_ids:['pmkisan-home-2026:1']});
+  const result=await createAnswerService({passages,model}).chat({question:'How much money does it provide each year?',scheme_id:'pm-kisan',language:'en'});
+  assert.equal(result.status,'answered');
+  assert.match(result.answer_text,/6,000 per year/u);
+  assert.equal(result.citations[0].evidence_id,'pmkisan-home-2026:1');
+});
+
 test('unsupported amounts and missing evidence are refused', async () => {
   const falseAmount = createAnswerService({ passages, model: async () => ({ answer_text: 'Rs 50000 monthly', evidence_ids: ['pmkisan-guidelines:2'] }) });
   const result = await falseAmount.chat({ question: 'PM-KISAN benefit amount?', language: 'en' });

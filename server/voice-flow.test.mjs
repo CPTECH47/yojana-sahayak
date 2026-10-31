@@ -120,3 +120,11 @@ test('two cancels a pending transcript without using it',async()=>{
   assert.match(await flow.handle('chat','2'),/cancelled/);
   assert.equal(calls,0);
 });
+
+test('confirmed voice questions use conversation-aware answer routing',async()=>{
+  const submitted=[];
+  const flow=createVoiceFlow({answers:{},fallback:async()=>'',answerQuestion:async(id,question,language)=>{submitted.push({id,question,language});return 'Reviewed answer\nSource: official URL';},transcribe:async()=>({text:'How much money per year?',language:'en'})});
+  await flow.handleAudio('chat',Buffer.from('fake'),true);
+  assert.match(await flow.handle('chat','1'),/Source: official URL/);
+  assert.deepEqual(submitted,[{id:'chat',question:'How much money per year?',language:'en'}]);
+});

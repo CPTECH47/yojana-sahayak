@@ -47,6 +47,7 @@ test('START asks language, then role, and farmer questions produce a sourced pre
   assert.match(await flow.handle('chat-a', 'START'), /Government scheme guidance/u);
   const roleMenu = await flow.handle('chat-a', '1');
   assert.match(roleMenu, /1 किसान/u);
+  assert.doesNotMatch(roleMenu, /स्वयंसेवक|\n6 /u);
   assert.match(roleMenu, /आधार, बैंक विवरण/u);
   assert.match(await flow.handle('chat-a', '1'), /PM-KISAN/u);
   await flow.handle('chat-a', 'yes');
@@ -211,7 +212,49 @@ test('each direct chat has its own language and profile state', async () => {
   assert.match(hindiRole, /NMMSS/u);
   assert.match(englishLead, /current eligibility rules/u);
   await flow.handle('a', 'PMUY eligibility');
-  assert.deepEqual(calls.at(-1), { question: 'PMUY eligibility', language: 'hi' });
+  assert.deepEqual(calls.at(-1), { question: 'PMUY eligibility', language: 'hi', scheme_id: 'pmuy' });
+});
+
+test('role menu has five choices; a direct question remembers the scheme for follow-ups',async()=>{
+  const {flow,calls}=conversation();
+  const first=await flow.handle('chat-a','PM-KISAN benefit amount?');
+  assert.match(first,/en:PM-KISAN benefit amount/u);
+  assert.deepEqual(calls.at(-1),{question:'PM-KISAN benefit amount?',language:'en',scheme_id:'pm-kisan'});
+  await flow.handle('chat-a','How much money per year?');
+  assert.equal(calls.at(-1).scheme_id,'pm-kisan');
+  await flow.handle('chat-a','PMUY application steps?');
+  assert.equal(calls.at(-1).scheme_id,'pmuy');
+  await flow.handle('chat-a','What documents are needed?');
+  assert.equal(calls.at(-1).scheme_id,'pmuy');
+  await flow.handle('chat-a','START');
+  await flow.handle('chat-a','2');
+  const menu=await flow.handle('chat-a','6');
+  assert.match(menu,/Please choose one of the listed options/u);
+  assert.doesNotMatch(menu,/Volunteer helping someone/u);
+  await flow.handle('chat-b','START');
+  assert.match(await flow.handle('chat-b','PM-KISAN benefit amount?'),/en:PM-KISAN benefit amount/u);
+  await flow.handle('chat-b','How much money per year?');
+  assert.equal(calls.at(-1).scheme_id,'pm-kisan');
+});
+
+test('selected farmer scheme supplies context for a question without its name',async()=>{
+  const {flow,calls}=conversation();
+  await startAndChoose(flow,'chat-a','2');
+  await flow.handle('chat-a','1');
+  await flow.handle('chat-a','How much money does it provide each year?');
+  assert.deepEqual(calls.at(-1),{question:'How much money does it provide each year?',language:'en',scheme_id:'pm-kisan'});
+});
+
+test('a personal eligibility follow-up reuses the fictional completed profile and cites rules',async()=>{
+  const {flow}=conversation();
+  await startAndChoose(flow,'chat-a','2');
+  await flow.handle('chat-a','1');
+  for(const answer of ['no','no','no','no'])await flow.handle('chat-a',answer);
+  const reply=await flow.handle('chat-a','Am I eligible?');
+  assert.match(reply,/Does not match one or more checked conditions/u);
+  assert.match(reply,/No recorded cultivable landholding/u);
+  assert.match(reply,/Source: PM-KISAN Operational Guidelines/u);
+  assert.doesNotMatch(reply,/official decision: true/u);
 });
 
 test('bare replies are accepted during the questionnaire and optional CSC prompt', async () => {

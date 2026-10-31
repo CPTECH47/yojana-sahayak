@@ -3,7 +3,7 @@ function spokenChoice(text) {
   const normalized=String(text).trim().toLocaleLowerCase().replace(/[.!?।,]/gu,'').trim();
   return ({one:'1',two:'2',three:'3',four:'4',five:'5',six:'6',ek:'1',do:'2','एक':'1','दो':'2','तीन':'3','चार':'4','पांच':'5','पाँच':'5','छह':'6','१':'1','२':'2','३':'3','४':'4','५':'5','६':'6'})[normalized] || normalized;
 }
-export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaireReply=()=>false, selectedLanguage=()=>null, choosingLanguage=()=>false, now=Date.now, diagnostic=()=>{} }) {
+export function createVoiceFlow({ answers, transcribe, fallback, answerQuestion=null, isQuestionnaireReply=()=>false, selectedLanguage=()=>null, choosingLanguage=()=>false, now=Date.now, diagnostic=()=>{} }) {
   const states=new Map();
   const current=id=>{const s=states.get(id);if(s && s.expires<now()){states.delete(id);return null;}return s;};
   const processing=process.env.YOJANA_STT_PROVIDER==='sarvam'
@@ -63,6 +63,7 @@ export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaire
           if(state.languageMenu && !choosingLanguage(id)) return 'The menu changed. Please send YOJANA START and choose again.\nमेनू बदल गया है। कृपया फिर से शुरू करें।';
           const choice=spokenChoice(state.text);
           if (isQuestionnaireReply(id, choice) && /^(?:[1-6]|yes|no|हाँ|हां|नहीं|नही|जी|ना|skip)$/iu.test(choice)) return await fallback(id,choice);
+          if(answerQuestion)return await answerQuestion(id,state.text,state.language);
           const result=await answers.chat({question:state.text,language:state.language});
           const label=state.language==='hi'?'स्रोत':'Source';
           const links=(result.citations || []).map(c=>`${label}: ${c.title}, ${c.locator} — ${c.url}`).join('\n');
