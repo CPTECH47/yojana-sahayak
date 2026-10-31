@@ -22,6 +22,25 @@ async function startAndChoose(flow, jid = 'chat-a', language = '1') {
   return flow.handle(jid, language);
 }
 
+test('Hindi numeric questionnaire replies support yes, no, back, skip and cancel', async () => {
+  const { flow, calls } = conversation();
+  await startAndChoose(flow);
+  const question = await flow.handle('chat-a', '1');
+  assert.match(question, /1 हाँ[\s\S]*2 नहीं[\s\S]*3 पिछला सवाल[\s\S]*4 पता नहीं[\s\S]*5 रोकें/u);
+  await flow.handle('chat-a', '1');
+  assert.match(await flow.handle('chat-a', '3'), /खेती योग्य जमीन/u);
+  await flow.handle('chat-a', '1');
+  await flow.handle('chat-a', '2');
+  await flow.handle('chat-a', '2');
+  const result = await flow.handle('chat-a', '4');
+  assert.match(result, /अधिक जानकारी चाहिए/u);
+  assert.equal(calls.at(-1).profile.other_official_exclusion, null);
+  await flow.handle('chat-a', 'START');
+  await flow.handle('chat-a', '1');
+  await flow.handle('chat-a', '1');
+  assert.match(await flow.handle('chat-a', '5'), /सवाल-जवाब रोक दिया/u);
+});
+
 test('START asks language, then role, and farmer questions produce a sourced preliminary result', async () => {
   const { flow, calls } = conversation();
   assert.match(await flow.handle('chat-a', 'START'), /For Hindi, press 1/u);

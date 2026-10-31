@@ -63,10 +63,10 @@ const roleNames = {
 function currentQuestion(state, error = false) {
   const language = state.language;
   const item = questionSets[state.role][state.index];
-  const lead = error ? (language === 'hi' ? 'जवाब समझ नहीं आया। कृपया हाँ / नहीं लिखें, या BACK, SKIP, CANCEL चुनें।\n' : 'I didn’t understand that. Reply YES or NO, or use BACK, SKIP, or CANCEL.\n') : '';
-  const answerHint = language === 'hi' ? '\nजवाब: हाँ / नहीं' : '\nAnswer: YES / NO';
+  const lead = error ? (language === 'hi' ? 'जवाब समझ नहीं आया। कृपया नीचे दिए गए विकल्पों में से चुनें।\n' : 'I didn’t understand that. Reply YES or NO, or use BACK, SKIP, or CANCEL.\n') : '';
+  const answerHint = language === 'hi' ? '\n1 हाँ\n2 नहीं\n3 पिछला सवाल (BACK)\n4 पता नहीं (SKIP)\n5 रोकें (CANCEL)' : '\nAnswer: YES / NO';
   const controls = language === 'hi'
-    ? '\nपिछले सवाल पर लौटें: BACK · पता न हो: SKIP · रोकें: CANCEL'
+    ? '\nविकल्प का नंबर भेजें। हाँ, नहीं, BACK, SKIP या CANCEL भी लिख सकते हैं।'
     : '\nCorrect the previous answer: BACK · Unsure: SKIP · Stop: CANCEL';
   return `${lead}${state.index + 1}/${questionSets[state.role].length}. ${item[language]}${answerHint}${controls}`;
 }
@@ -249,7 +249,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       return language === 'hi' ? 'ठीक है। नया सुझाव शुरू करने के लिए START लिखें।' : 'Okay. Send START to begin a new suggestion.';
     }
 
-    if (/^cancel$/iu.test(value) && state) {
+    if ((/^cancel$/iu.test(value) || (state?.phase === 'questions' && state.language === 'hi' && value === '5')) && state) {
       questionnaireByChat.delete(chatId);
       return state.language === 'hi' ? 'सवाल-जवाब रोक दिया गया। आपकी प्रोफ़ाइल इस सत्र से हटा दी गई।' : 'Questionnaire cancelled. Your profile has been cleared from this session.';
     }
@@ -289,13 +289,14 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
         questionnaireByChat.set(chatId, next);
         return rolePrompt(state.language);
       }
-      if (value === 'back') {
+      if (value === 'back' || (state.language === 'hi' && value === '3')) {
         if (state.index === 0) return currentQuestion(state);
         const next = { ...state, index: state.index - 1 };
         questionnaireByChat.set(chatId, next);
         return currentQuestion(next);
       }
-      const answer = parseYesNo(text);
+      const hindiChoice = state.language === 'hi' ? { '1': true, '2': false, '4': null } : {};
+      const answer = Object.hasOwn(hindiChoice, value) ? hindiChoice[value] : parseYesNo(text);
       if (answer === undefined) return currentQuestion(state, true);
       const step = questionSets[state.role][state.index];
       const profile = { ...state.profile, [step.key]: answer };
