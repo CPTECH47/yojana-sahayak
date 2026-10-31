@@ -1,5 +1,11 @@
 # Server integration handoff
 
+## Spam controls and factual-selection cache — 31 October 2026
+
+- Added admission before media download/Sarvam/conversation processing: text bucket burst 8/refill 30 per minute, voice burst 2/refill 6 per minute, one active request per chat and four globally. Duplicate event IDs are checked against durable delivery records before downloads, then bounded in-memory IDs. A bilingual denial notice is sent at most once per chat per 15 seconds. Numeric answers with different IDs remain valid; rejected events never advance or queue a questionnaire answer. Local counters reset at restart; distributed replicas need shared state.
+- Factual Qwen selections now have a bounded 200-entry/five-minute ID-only cache and identical-request coalescing. Source approval, expiry, hash checks and retrieval still run before lookup. Keys bind scheme, language, exact normalized question, records and evidence. No profile decisions, recordings, invalid selections, errors or fallback responses are cached. API fields are unchanged.
+- Files: `server/whatsapp-guard.mjs`, `server/whatsapp-ingress.mjs`, their tests, `server/whatsapp-prototype.mjs`, `server/answer-service.mjs`, `server/answer-cache.test.mjs`, `docs/SPAM_PROTECTION.md`, this handoff and the flow guide. Verification: 134/134 Node tests and production build passed; checks used synthetic/mocked requests, no live spam or paid speech calls. Unreadable recordings offer a retry/type message and release admission. A fresh phone test of normal text/voice remains manual after restart.
+
 ## Short WhatsApp result — 31 October 2026
 
 - The final comparison reply now presents only the highest-ranked non-excluded scheme with a brief possible-match or needs-information status. Other schemes, condition counts and calculations stay in session/API results. Duplicate source links are grouped with their locators; full policy scope notes remain. All-excluded checks produce a short no-suitable-scheme response. CSC consent and location handling still follow the result.

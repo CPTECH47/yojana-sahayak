@@ -22,6 +22,8 @@ A person may also begin with a direct named scheme question, for example `YOJANA
 
 ## How the pilot reduces unsupported answers
 
+Abuse controls run before downloads or AI calls. Each chat has one active request, short text/voice burst allowances and a clear wait response if busy. Different numeric replies are not deduplicated. Repeated factual questions can reuse a five-minute evidence-bound fact-ID selection; sources are still rechecked. See [spam protection](SPAM_PROTECTION.md) for exact limits and recovery behavior.
+
 - Retrieval reads only manifest sources marked `approved`; expired sources are filtered out by date.
 - The model is given retrieved passages and constrained to cite only their evidence IDs. A missing passage, empty draft, or unsupported evidence ID produces an insufficient-evidence response.
 - The model selects only fact IDs from retrieved pinned records. Final bilingual wording comes from those records, including amounts and periods; model prose and model-generated links are never displayed.

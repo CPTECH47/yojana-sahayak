@@ -6,7 +6,6 @@ import pino from 'pino';
 import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
-import { demoCommand } from './yojana-answer.mjs';
 import { createAnswerService } from './answer-service.mjs';
 import { createWhatsAppConversation } from './whatsapp-flow.mjs';
 import { openLocalStore } from './local-store.mjs';
@@ -14,7 +13,7 @@ import { createDelivery } from './delivery.mjs';
 import { scanReviewedUpdates, deliverReviewedAlerts } from './alerts.mjs';
 import { transcribeVoice } from './voice.mjs';
 import { createVoiceFlow } from './voice-flow.mjs';
-import { messageContent, messageText } from './whatsapp-content.mjs';
+import { createWhatsAppIngress } from './whatsapp-ingress.mjs';
 import { installSafeSignalLogging } from './safe-signal-logging.mjs';
 import { startSourceUpdates } from './source-update-runner.mjs';
 
@@ -39,6 +38,10 @@ const deliver=createDelivery({store,handle:async (chat,text)=>{
   }
   return voice.handle(chat,text);
 },send});
+const receive=createWhatsAppIngress({conversation,voice,store,deliver,send,pendingVoice,
+  maxVoiceSeconds:process.env.YOJANA_STT_PROVIDER==='sarvam'?30:60,
+  downloadAudio:message=>downloadMediaMessage(message,'buffer',{}, {logger:pino({level:'silent'}),reuploadRequest:currentSocket?.updateMediaMessage}),
+  log:message=>console.log(message)});
 const alertTimer=setInterval(async()=>{
   try {
     scanReviewedUpdates({store,answers});
@@ -96,44 +99,9 @@ async function start() {
   });
   socket.ev.on('messages.upsert', async ({ type, messages }) => {
     if (type !== 'notify') return;
-    for (const message of messages) {
-      const jid = message.key.remoteJid;
-      const id = message.key.id;
-      if (message.key.fromMe || !jid || jid.endsWith('@g.us') || !id) continue;
-      const rawText = messageText(message);
-      const command = demoCommand(rawText);
-      if(command?.trim().toLowerCase()==='voice') console.log('Voice status: request received');
-      const content=messageContent(message);
-      const audio=content?.audioMessage;
-      if(audio) console.log('Voice status: audio received');
-      let text;
-      if(audio && (voice.acceptsAudio(jid) || conversation.hasActiveConversation(jid))){
-        const length=Number(audio.fileLength), seconds=Number(audio.seconds);
-          const maxSeconds=process.env.YOJANA_STT_PROVIDER==='sarvam'?30:60;
-          if(!Number.isFinite(length) || length<1 || length>10*1024*1024 || !Number.isFinite(seconds) || seconds>maxSeconds){
-            await socket.sendMessage(jid,{text:`Please send a voice question shorter than ${maxSeconds} seconds.`}); continue;
-        }
-        try {
-          const bytes=await downloadMediaMessage(message,'buffer',{}, {logger:pino({level:'silent'}),reuploadRequest:socket.updateMediaMessage});
-          if(!Buffer.isBuffer(bytes) || bytes.length>10*1024*1024)throw Error();
-          console.log('Voice status: audio downloaded');
-          const key=store.id(jid+':'+id);pendingVoice.set(key,bytes);text='__VOICE_AUDIO__:'+key;
-        } catch {console.log('Voice status: audio download failed');await socket.sendMessage(jid,{text:'Voice download failed. Please try again or send a text question.'});continue;}
-      } else {
-        if (command === null && !conversation.acceptsBareQuestionnaireReply(jid, rawText) && !voice.acceptsPendingChoice(jid, rawText)) continue;
-        text = command ?? rawText.trim();
-      }
-      if(text.length>1000)continue;
-      try {
-        const status=await deliver(jid,id,text);
-        if(text.startsWith('__VOICE_AUDIO__:'))pendingVoice.delete(text.slice('__VOICE_AUDIO__:'.length));
-        console.log('WhatsApp message processing: '+status);
-      } catch (error) {
-        console.error('WhatsApp message processing failed.');
-      } finally {
-        if(text.startsWith('__VOICE_AUDIO__:'))pendingVoice.delete(text.slice('__VOICE_AUDIO__:'.length));
-      }
-    }
+    // Admit each event before awaits so a batch of messages cannot bypass the
+    // one-request-per-chat guard and advance several questions unexpectedly.
+    await Promise.all(messages.map(message=>receive(message).catch(()=>console.error('WhatsApp message processing failed.'))));
   });
 }
 
