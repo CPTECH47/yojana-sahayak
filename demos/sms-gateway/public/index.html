@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Yojana · SMS rehearsal</title><link rel="stylesheet" href="/style.css"></head>
+<body><main><header><p class="eyebrow">YOJANA SAHAYAK / LOCAL OPERATOR CONSOLE</p><h1>From guidance to a text message.</h1><p>Prepare a reviewed summary, check its length, then confirm the send.</p><p id="mode" class="mode" role="status">Connecting…</p></header>
+<section class="flow" aria-label="SMS flow"><span>Local backend</span><b>→</b><span>Android gateway</span><b>→</b><span>SIM network</span><b>→</b><span>Recipient phone</span></section>
+<section class="grid"><form id="form" class="panel"><h2>1. Prepare</h2>
+<label>Message<select id="template" required></select></label>
+<label>Language<select id="language"><option value="en">English</option><option value="hi">हिंदी</option></select></label>
+<label id="recipientLabel">Consenting tester’s number<input id="recipient" type="tel" autocomplete="off" placeholder="10-digit Indian mobile or +country code"></label>
+<label id="scenarioLabel">Simulator result<select id="scenario"><option value="success">Simulated success</option><option value="failure">Simulated failure</option><option value="uncertain">Simulated uncertain outcome</option></select></label>
+<label class="check"><input id="consent" type="checkbox" required><span>The tester has agreed to receive this message. I have confirmed the recipient and any SIM charges.</span></label>
+<button id="prepare">Prepare preview</button></form>
+<section class="panel"><h2>2. Review &amp; confirm</h2><p id="previewHint">A preview will appear here. Nothing is sent automatically.</p><article id="preview" hidden><p id="text" class="sms"></p><p id="estimate"></p><p id="target"></p><p><a id="source" target="_blank" rel="noreferrer">Official source ↗</a></p><button id="send" type="button">Confirm</button><p id="sendNote"></p></article></section></section>
+<p id="notice" role="status" aria-live="polite"></p>
+<section class="panel"><h2>3. Message log</h2><p id="budget"></p><p>“Accepted” means the gateway received the request. Confirm actual receipt on the test phone. Uncertain requests are never automatically resent.</p><div id="log"></div></section>
+<footer><p>This is an outgoing SMS demo with two curated guidance templates. It does not make eligibility decisions, find a verified nearest CSC, process incoming SMS or run an IVR.</p><p>Phone numbers stay in memory while a preview is active; the local ledger keeps a masked number and keyed hash. Gateway credentials remain in the private local configuration. The Android app and mobile operator keep their own records.</p><p>USB: run <code>npm run install:phone</code> after authorizing USB debugging on the phone. Then run <code>npm run setup:phone</code> and restart. Wi-Fi is an alternative. SMS still needs SIM coverage.</p></footer></main><script type="module" src="/app.js"></script></body></html>
