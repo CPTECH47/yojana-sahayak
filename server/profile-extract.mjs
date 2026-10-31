@@ -1,23 +1,64 @@
 import { askModel } from './answer-service.mjs';
 
+// JavaScript \b is ASCII-oriented. Include combining marks in Hindi boundaries.
+function words(expression) {
+  return new RegExp(`(?<![\\p{L}\\p{M}\\p{N}_])(?:${expression})(?![\\p{L}\\p{M}\\p{N}_])`, 'iu');
+}
 const roleTerms = {
-  farmer: /\bfarmer\b|\bfarming\b|किसान|खेती|कृषक/iu,
-  worker: /\bworker\b|\blabou?r\b|\bworkman\b|कामगार|मजदूर|श्रमिक/iu,
-  student: /\bstudent\b|विद्यार्थी|छात्र|छात्रा/iu,
-  artisan: /\bartisan\b|\bcraft(?:sman|swoman| worker)?\b|कारीगर|शिल्पकार/iu,
-  family: /\bfamily\b|\bhousehold\b|परिवार|गृहिणी/iu,
+  farmer: words('farmer|farming|किसान|खेती|कृषक'),
+  worker: words('worker|labou?r|workman|कामगार|मजदूर|श्रमिक'),
+  student: words('student|विद्यार्थी|छात्र|छात्रा'),
+  artisan: words('artisan|craft(?:sman|swoman| worker)?|कारीगर|शिल्पकार'),
+  family: words('family|household|परिवार|गृहिणी'),
 };
 const periodTerms = {
-  day: /\b(?:per|a|every)\s*day\b|\bdaily\b|रोज|प्रतिदिन|हर दिन|दैनिक/iu,
-  week: /\b(?:per|a|every)\s*week\b|\bweekly\b|हफ्ते|सप्ताह|साप्ताहिक/iu,
-  month: /\b(?:per|a|every)\s*month\b|\bmonthly\b|महीने|मासिक|प्रति माह/iu,
-  year: /\b(?:per|a|every)\s*year\b|\byearly\b|\bannual(?:ly)?\b|सालाना|वार्षिक|प्रति वर्ष/iu,
+  day: words('(?:per|a|every)\\s*day|daily|रोज|प्रतिदिन|हर दिन|दैनिक'),
+  week: words('(?:per|a|every)\\s*week|weekly|हफ्ते|सप्ताह|साप्ताहिक'),
+  month: words('(?:per|a|every)\\s*month|monthly|महीने|मासिक|प्रति माह'),
+  year: words('(?:per|a|every)\\s*year|yearly|annual(?:ly)?|सालाना|वार्षिक|प्रति वर्ष'),
 };
+const otherPerson = words('my (?:father|mother|husband|wife|son|daughter|brother|sister)|his|her|their|(?:मेरे|मेरी|मेरा|हमारे|हमारी)\\s+(?:पिता|माता|माँ|मां|भाई|बहन|पति|पत्नी|बेटा|बेटी|बेटे)|उसका|उसकी|उनका|उनकी');
+const firstPerson = words("i am|i'm|i work|i earn|i make|my income|my salary|we are|मैं|मैंने|हम|हूँ|करता|करती|मेरे पास|मेरी आय|मेरा वेतन");
+const uncertain = words('if|suppose|maybe|perhaps|might|could|अगर|यदि|शायद|क्या');
+const incomeWords = words('earn(?:s|ing)?|income|salary|wages?|कमाता|कमाती|कमाई|आय|वेतन|मजदूरी');
+
+function clauses(text) {
+  return text.split(/[!?।;,]|(?<!\d)\.|\.(?!\d)|\b(?:and|but)\b|और|लेकिन/iu)
+    .map(clause => clause.trim()).filter(Boolean);
+}
+
+function groundedRoles(input) {
+  const personal = clauses(input).filter(clause => firstPerson.test(clause)
+    && !otherPerson.test(clause) && !uncertain.test(clause));
+  return Object.entries(roleTerms).filter(([, pattern]) =>
+    personal.some(clause => pattern.test(clause) && !negation.test(clause))
+    && !personal.some(clause => pattern.test(clause) && negation.test(clause)))
+    .map(([role]) => role);
+}
+
+function personalIncome(input) {
+  let personalSubject = false;
+  const personal = clauses(input).filter(clause => {
+    if (otherPerson.test(clause)) personalSubject = false;
+    else if (firstPerson.test(clause)) personalSubject = true;
+    return personalSubject && incomeWords.test(clause)
+      && !negation.test(clause) && !uncertain.test(clause);
+  });
+  const text = personal.join(' ');
+  const amounts = [...text.matchAll(/(?:₹|rs\.?\s*|inr\s*)\s*(\d+(?:,\d{2,3})*(?:\.\d+)?)|\b(\d+(?:,\d{2,3})*(?:\.\d+)?)\s*(?:rupees?|rs\b|रुपये|रूपये|रु\b)/giu)]
+    .map(match => Number((match[1] || match[2]).replaceAll(',', '')));
+  const unique = [...new Set(amounts)];
+  const negative = /(?:₹|rs\.?|inr)\s*-\s*\d|-\s*\d[\d,.]*\s*(?:rupees?|rs\b|रुपये|रूपये)/iu.test(text);
+  const amount = !negative && unique.length === 1 && Number.isSafeInteger(unique[0]) ? unique[0] : null;
+  const periods = Object.entries(periodTerms).filter(([, pattern]) => pattern.test(text)).map(([period]) => period);
+  return { income_amount: amount, income_period: amount !== null && periods.length === 1 ? periods[0] : null };
+}
 const digits = text => text.replace(/[०-९]/gu, digit => String(digit.charCodeAt(0)-0x0966));
 const claimFields=['owns_cultivable_land','income_tax_payer_last_year','unorganised_worker','age_18_to_40','household_has_existing_lpg'];
 const negation = /\b(?:no|not|never|don't|do not|doesn't|without)\b|नहीं|नही|बिना/iu;
 export function verifyClaim(field,value,quote) {
   const q=String(quote).toLowerCase();
+  if (otherPerson.test(q) || uncertain.test(q) || /\?/u.test(q)) return false;
   if(field==='owns_cultivable_land') {
     if(!/\bland\b|\bfield\b|जमीन|ज़मीन|खेत/u.test(q))return false;
     if(value===false)return /\b(?:no|not|don't|do not|without)\b.{0,35}\b(?:land|field)\b|जमीन नहीं|ज़मीन नहीं|खेत नहीं/u.test(q);
@@ -46,17 +87,22 @@ export function verifyClaim(field,value,quote) {
 
 export function isProfileStatement(text) {
   return Object.values(roleTerms).some(pattern => pattern.test(String(text)))
-    && /\b(?:i am|i'm|i work|my|we are|i earn|i make)\b|मैं|मेरी|मेरा|हम|हूँ|करता|करती|कमाता|कमाती/iu.test(String(text));
+    && firstPerson.test(String(text));
+}
+
+function supportedQuote(input, field, value, quote) {
+  if (!verifyClaim(field, value, quote)) return false;
+  const sourceClauses = clauses(input);
+  // Check the entire containing clause so a model cannot quote away a negation.
+  return sourceClauses.some(clause => clause.toLowerCase().includes(quote.toLowerCase())
+    && verifyClaim(field, value, clause))
+    && !sourceClauses.some(clause => verifyClaim(field, !value, clause));
 }
 
 export async function extractProfileStatement(text, { model = askModel } = {}) {
   const input=digits(String(text).slice(0,1000));
-  const negated=/(?:\bnot\s+(?:a\s+|an\s+)?(?:farmer|worker|student|artisan)\b|किसान नहीं|कामगार नहीं|विद्यार्थी नहीं|कारीगर नहीं)/iu.test(input);
-  const aboutOther=/\bmy\s+(?:father|mother|husband|wife|son|daughter)\b/iu.test(input) && !/\b(?:i am|i'm|i work as)\b/iu.test(input);
-  const groundedRoles=negated||aboutOther?[]:Object.entries(roleTerms).filter(([,pattern])=>pattern.test(input)).map(([role])=>role);
-  const amountMatch=/(?:₹|rs\.?\s*|inr\s*)\s*(\d{1,7}(?:,\d{2,3})*)|\b(\d{1,7}(?:,\d{2,3})*)\s*(?:rupees?|rs\b|रुपये|रूपये|रु\b)/iu.exec(input);
-  const amount=amountMatch ? Number((amountMatch[1]||amountMatch[2]).replaceAll(',','')) : null;
-  const groundedPeriods=Object.entries(periodTerms).filter(([,pattern])=>pattern.test(input)).map(([period])=>period);
+  const roles = groundedRoles(input);
+  const income = personalIncome(input);
   let choice={};
   try {
     choice=await model([
@@ -64,10 +110,8 @@ export async function extractProfileStatement(text, { model = askModel } = {}) {
       {role:'user',content:JSON.stringify({message:input})},
     ],{type:'object',properties:{role:{type:'string',enum:['farmer','worker','student','artisan','family','unknown']},income_period:{type:'string',enum:['day','week','month','year','unknown']},claims:{type:'array',maxItems:5,items:{type:'object',properties:{field:{type:'string',enum:claimFields},value:{type:'boolean'},quote:{type:'string'}},required:['field','value','quote'],additionalProperties:false}}},required:['role','income_period','claims'],additionalProperties:false});
   } catch { /* Grounded fallback keeps the conversation usable when Ollama is down. */ }
-  const role=groundedRoles.length===1 && choice.role===groundedRoles[0]
-    ? choice.role : groundedRoles.length===1 ? groundedRoles[0] : null;
-  const income_period=groundedPeriods.length===1 && choice.income_period===groundedPeriods[0]
-    ? choice.income_period : groundedPeriods.length===1 ? groundedPeriods[0] : null;
+  choice = choice && typeof choice === 'object' ? choice : {};
+  const role = roles.length === 1 ? roles[0] : null;
   const facts={};
   const conflicts=new Set();
   const addFact=(field,value)=>{
@@ -77,12 +121,12 @@ export async function extractProfileStatement(text, { model = askModel } = {}) {
   };
   for(const claim of Array.isArray(choice.claims)?choice.claims:[]){
     if(!claimFields.includes(claim?.field)||typeof claim.value!=='boolean'||typeof claim.quote!=='string'||!claim.quote.trim()||claim.quote.length>160)continue;
-    if(!input.toLowerCase().includes(claim.quote.toLowerCase()) || !verifyClaim(claim.field,claim.value,claim.quote))continue;
+    if(!supportedQuote(input,claim.field,claim.value,claim.quote))continue;
     addFact(claim.field,claim.value);
   }
   // Narrow, literal fallback for facts the local model misses. Each clause must
   // express exactly one polarity; no missing condition is filled in.
-  for(const raw of input.split(/[.!?।;]|\b(?:and|but)\b|और|लेकिन/iu)){
+  for(const raw of clauses(input)){
     const clause=raw.trim();
     if(!clause || clause.length>160)continue;
     for(const field of claimFields){
@@ -90,7 +134,7 @@ export async function extractProfileStatement(text, { model = askModel } = {}) {
       if(yes!==no)addFact(field,yes);
     }
   }
-  return {role,income_amount:Number.isSafeInteger(amount) && amount>=0?amount:null,income_period,facts};
+  return { role, ...income, facts };
 }
 
 export async function interpretQuestionAnswer(text,field,{model=askModel}={}) {
@@ -104,7 +148,6 @@ export async function interpretQuestionAnswer(text,field,{model=askModel}={}) {
     ],{type:'object',properties:{answer:{type:'string',enum:['yes','no','unknown']},quote:{type:'string'}},required:['answer','quote'],additionalProperties:false});
   } catch {return null;}
   if(!['yes','no'].includes(result?.answer)||typeof result.quote!=='string'||!result.quote.trim()||result.quote.length>160)return null;
-  if(!input.toLowerCase().includes(result.quote.toLowerCase()))return null;
   const value=result.answer==='yes';
-  return verifyClaim(field,value,result.quote)?value:null;
+  return supportedQuote(input,field,value,result.quote)?value:null;
 }

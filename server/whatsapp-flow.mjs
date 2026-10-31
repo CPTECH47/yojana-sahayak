@@ -339,7 +339,11 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
         current.phase='income_period';questionnaireByChat.set(chatId,current);
         return state.language==='hi'?'₹'+state.candidate.income_amount+' कितने समय की आय है?\n1 प्रतिदिन · 2 प्रति सप्ताह · 3 प्रति माह · 4 प्रति वर्ष · 5 पता नहीं · 6 वापस · 7 रद्द करें':'₹'+state.candidate.income_amount+' is income for which period?\n1 Day · 2 Week · 3 Month · 4 Year · 5 Unsure · 6 Back · 7 Cancel';
       }
-      if(current.role==='worker' && state.candidate.income_period==='month')current.profile.monthly_income_at_most_15000=state.candidate.income_amount<=15000;
+      const incomeAmount = state.candidate.income_amount;
+      if (current.role === 'worker' && state.candidate.income_period === 'month'
+        && Number.isSafeInteger(incomeAmount) && incomeAmount >= 0) {
+        current.profile.monthly_income_at_most_15000 = incomeAmount <= 15000;
+      }
       const firstUnknown=questionSets[current.role].findIndex(q=>typeof current.profile[q.key]!=='boolean');
       if(firstUnknown>=0)current.index=firstUnknown;
       return [naturalAnalysis(current),currentQuestion(current)].filter(Boolean).join('\n');
@@ -347,7 +351,10 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     if(naturalFlow && state?.phase==='income_period'){
       if(value==='7'||value==='cancel'){questionnaireByChat.delete(chatId);return state.language==='hi'?'जाँच रद्द की गई। *YOJANA START* भेजकर फिर शुरू करें।':'Check cancelled. Send *YOJANA START* to restart.';}
       if(value==='6'||value==='back'){
-        const next={phase:'natural_confirm',language:state.language,candidate:{role:state.role,income_amount:state.profile.income_amount,income_period:null}};
+        const facts = Object.fromEntries(questionSets[state.role]
+          .filter(question => typeof state.profile[question.key] === 'boolean')
+          .map(question => [question.key, state.profile[question.key]]));
+        const next={phase:'natural_confirm',language:state.language,candidate:{role:state.role,income_amount:state.profile.income_amount,income_period:null,facts}};
         questionnaireByChat.set(chatId,next);
         return state.language==='hi'?'पहली जानकारी पर वापस। 1 सही · 2 सुधारें · 3 रद्द करें।':'Back to your profile. 1 Confirm · 2 Correct · 3 Cancel.';
       }
