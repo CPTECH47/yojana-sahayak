@@ -1,5 +1,12 @@
 # Server integration handoff
 
+## Latest update: skipped answers and WhatsApp 401
+
+- Recommendation results now list skipped questions separately from failed checks and tell users how to restart with corrected answers. No alternative scheme or guaranteed path to eligibility is claimed.
+- The WhatsApp process explains the logged-out 401 and points to the re-linking instructions in `docs/WHATSAPP_FLOW.md`. Tejas reported the 401; a re-pair and live phone retest remain outstanding. Session files have not been changed.
+- Changed `server/whatsapp-flow.mjs`, `server/whatsapp-flow.test.mjs`, `server/whatsapp-prototype.mjs`, and `docs/WHATSAPP_FLOW.md`. API fields remain unchanged.
+- `npm.cmd test`: 22 passed; `npm.cmd run build` and `git diff --check`: passed. No live WhatsApp or model test was performed for this update.
+
 ## Latest update: result guidance
 
 - WhatsApp recommendation results use bullets, explain the reported failed checks, offer a fresh check if an answer was incorrect, and direct users to official sources for full rules and documents. PMUY links to its official document list; other document lists remain to be reviewed. The bot does not promise that a person can become eligible by changing their circumstances.

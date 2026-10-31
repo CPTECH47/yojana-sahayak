@@ -37,11 +37,24 @@ test('START asks language, then role, and farmer questions produce a sourced pre
   await flow.handle('chat-a', 'no');
   const result = await flow.handle('chat-a', 'SKIP');
   assert.match(result, /अधिक जानकारी चाहिए/u);
+  assert.match(result, /जिन सवालों के जवाब बाकी हैं/u);
+  assert.match(result, /कोई अन्य अपवाद/u);
   assert.match(result, /pmkisan.gov.in/u);
   assert.equal(calls[0].profile.scheme_id, 'pm-kisan');
   assert.equal(calls[0].profile.owns_cultivable_land, true);
   assert.equal(calls[0].profile.income_tax_payer_last_year, false);
   assert.equal(calls[0].profile.other_official_exclusion, null);
+});
+
+test('failed and skipped conditions are reported separately with a way to restart', async () => {
+  const { flow } = conversation();
+  await startAndChoose(flow, 'chat-a', '2');
+  await flow.handle('chat-a', '3');
+  for (const answer of ['yes', 'skip', 'yes', 'yes', 'no']) await flow.handle('chat-a', answer);
+  const result = await flow.handle('chat-a', 'no');
+  assert.match(result, /Coverage under EPF, ESIC or NPS was reported/u);
+  assert.match(result, /Answers still needed:[\s\S]*monthly income/u);
+  assert.match(result, /YOJANA START/u);
 });
 
 test('family questionnaire recommends PMUY only as a preliminary match with its sources', async () => {

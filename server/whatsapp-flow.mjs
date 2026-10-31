@@ -99,6 +99,11 @@ function formatRecommendation(result, language) {
       : (language === 'hi' ? 'अधिक जानकारी चाहिए' : 'More information is needed');
   const citationLabel = language === 'hi' ? 'स्रोत' : 'Source';
   const explanation = item.reasons?.map(reason => `• ${reason}`).join('\n') || '';
+  const questions = Object.values(questionSets).flat();
+  const missing = (item.missing_fields || []).map(key => questions.find(question => question.key === key)?.[language]).filter(Boolean);
+  const missingText = missing.length
+    ? `\n${language === 'hi' ? '• जिन सवालों के जवाब बाकी हैं:' : '• Answers still needed:'}\n${missing.map(question => `  ◦ ${question}`).join('\n')}`
+    : '';
   const groupedCitations = new Map();
   for (const citation of item.citations || []) {
     const key = `${citation.title}\n${citation.url}`;
@@ -118,11 +123,11 @@ function formatRecommendation(result, language) {
     : 'Need in-person help? Find a Common Service Centre: https://locator.csccloud.in/ (select your area there; services vary by centre).';
   const next = item.status === 'not_matched'
     ? (language === 'hi' ? '• अगला कदम: यदि कोई जवाब गलत था, YOJANA START भेजकर सही जानकारी के साथ फिर जाँचें। नियमों और अन्य योजनाओं के लिए आधिकारिक कार्यालय से पूछें।' : '• Next: If an answer was wrong, send YOJANA START and check again with correct details. Ask the official office about the rules and other schemes.')
-    : (language === 'hi' ? '• अगला कदम: आवेदन से पहले पूरी शर्तें और दस्तावेज़ आधिकारिक स्रोत से जाँचें।' : '• Next: Check the full rules and required documents with the official source before applying.');
+    : (language === 'hi' ? '• अगला कदम: छूटे हुए जवाब देने या सुधारने के लिए YOJANA START भेजें। आवेदन से पहले आधिकारिक नियम जाँचें।' : '• Next: Send YOJANA START to supply or correct answers. Check the official rules before applying.');
   const documents = item.scheme_id === 'pmuy'
     ? (language === 'hi' ? '• आवश्यक दस्तावेज़: PMUY की आधिकारिक सूची देखें: https://pmuy.gov.in/ujjwala2.html' : '• Required documents: See the official PMUY list: https://pmuy.gov.in/ujjwala2.html')
     : (language === 'hi' ? '• आवश्यक दस्तावेज़: आधिकारिक योजना पोर्टल या कार्यालय से सूची की पुष्टि करें।' : '• Required documents: Confirm the list with the official scheme portal or office.');
-  return `*${item.scheme_name}*\n• ${status}${explanation ? `\n${explanation}` : ''}\n• ${note}\n${next}\n${documents}${sources ? `\n• ${sources.replaceAll('\n', '\n• ')}` : ''}\n• ${csc}`;
+  return `*${item.scheme_name}*\n• ${status}${explanation ? `\n${explanation}` : ''}${missingText}\n• ${note}\n${next}\n${documents}${sources ? `\n• ${sources.replaceAll('\n', '\n• ')}` : ''}\n• ${csc}`;
 }
 
 function infoOnly(role, language, passages) {

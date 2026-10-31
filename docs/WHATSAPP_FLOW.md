@@ -29,3 +29,7 @@ These controls lower risk, but they cannot guarantee that a language model never
 ## Not implemented yet
 
 This repository currently accepts text only in the Baileys route. Voice transcription/audio replies, current student eligibility matching, artisan eligibility matching, state-specific scheme matching and an automated document-change monitor are not running. The proposed monitor must quarantine changes for human review; it must never auto-approve new eligibility rules.
+
+## Re-linking after a 401
+
+A 401 logged-out response means the saved WhatsApp session was rejected; the bot stops reconnecting. Stop the bot, and with the account owner's consent move `server/.baileys-auth` to a secure location outside the repository as a backup. Do not share or commit it. Restart the bot to create a fresh pairing request, then link the intended WhatsApp account via Linked devices. A successful connection must be verified on the phone; do not assume re-linking resolves every 401. For phone-number pairing, start PowerShell with `$env:YOJANA_PAIRING_MODE='code'` before running `node server/whatsapp-prototype.mjs` and follow the prompts.

@@ -55,7 +55,9 @@ async function start() {
     if (connection === 'close') {
       const code = lastDisconnect?.error?.output?.statusCode;
       console.log(`WhatsApp disconnected (${code ?? 'unknown'}).`);
-      if (code !== DisconnectReason.loggedOut) setTimeout(start, 3000);
+      if (code === DisconnectReason.loggedOut) {
+        console.log('The saved WhatsApp link was logged out or rejected. Stop the bot and re-link the consenting test account before retrying. See docs/WHATSAPP_FLOW.md; do not share the session files.');
+      } else setTimeout(start, 3000);
     }
   });
   socket.ev.on('messages.upsert', async ({ type, messages }) => {
