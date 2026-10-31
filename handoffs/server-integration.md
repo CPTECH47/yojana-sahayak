@@ -81,3 +81,9 @@
 - `server/voice-flow.mjs` now maps confirmed spoken Hindi and English numbers one through six to the active questionnaire; typed replies and direct voice-question confirmation remain unchanged. Short spoken yes/no still follows the same confirmation step. Transcription is still local Whisper small and accuracy is not guaranteed.
 - `node --test server/voice-flow.test.mjs`: 5/5 passed, including mocked transcripts passing into the real language and role conversation. `npm.cmd test`: 46/46 passed before the final additional integration test; `npm.cmd run build` passed; `git diff --check` passed.
 - Unfinished: real WhatsApp phone test for recognized number choices, Hindi/English recognition accuracy and latency. An unclear recording must be cancelled and retried or typed. No API fields changed.
+
+## Voice language hint experiment — 31 October
+
+- `scripts/transcribe_voice.py`, `server/voice.mjs`, `server/voice-flow.mjs`, `server/whatsapp-flow.mjs`, `server/whatsapp-prototype.mjs`: use the explicitly selected Hindi or English as a local transcription hint while a role/questionnaire choice is active. Free questions continue automatic detection. Confirmation remains required. A user must first type the language to avoid guessing it from an isolated word.
+- Local synthetic English speech: small 4.1 s and turbo 12.7 s, both returned `1` (single sample, CPU including model load; no general accuracy claim). Larger turbo model loaded locally but actual Hindi single-word auto-detection returned unsupported language. Hindi hints and live questionnaire accuracy remain unverified.
+- `npm.cmd test`: 48/48 passed; `npm.cmd run build` and `git diff --check` passed. Model selection is an environment override `YOJANA_WHISPER_MODEL=turbo`, not a changed default; no API fields changed. The source-corpus assignment remains incomplete in draft PR #5.

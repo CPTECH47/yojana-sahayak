@@ -24,7 +24,7 @@ const authLock = openLocalStore(join(authDir,'.owner'));
 const store = openLocalStore(resolve(process.env.YOJANA_STATE_DIR || '.runtime/whatsapp'));
 const answers = createAnswerService();
 const conversation = createWhatsAppConversation({ answers, store });
-const voice = createVoiceFlow({ answers, transcribe:transcribeVoice, fallback:conversation.handle, isQuestionnaireReply:conversation.acceptsBareQuestionnaireReply, diagnostic:event=>console.log('Voice status: '+event) });
+const voice = createVoiceFlow({ answers, transcribe:transcribeVoice, fallback:conversation.handle, isQuestionnaireReply:conversation.acceptsBareQuestionnaireReply, selectedLanguage:conversation.selectedLanguage, diagnostic:event=>console.log('Voice status: '+event) });
 const pendingVoice = new Map();
 let currentSocket, reconnectTimer, stopped=false, attempts=0;
 const send=async(chat,text)=>{

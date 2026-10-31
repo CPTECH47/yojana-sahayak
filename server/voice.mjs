@@ -8,10 +8,13 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const localPython = join(root, '.runtime', 'voice-venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
 
 // Audio is piped to the local worker rather than written to the repository.
-export function transcribeVoice(audio, { python = process.env.YOJANA_VOICE_PYTHON || (existsSync(localPython) ? localPython : 'python'), timeoutMs = 120000 } = {}) {
+export function transcribeVoice(audio, { python = process.env.YOJANA_VOICE_PYTHON || (existsSync(localPython) ? localPython : 'python'), timeoutMs = 120000, language } = {}) {
   if (!Buffer.isBuffer(audio) || !audio.length || audio.length > 10 * 1024 * 1024) return Promise.reject(new Error('Invalid audio'));
   return new Promise((resolve, reject) => {
-    const child = spawn(python, [script], { stdio:['pipe','pipe','pipe'], windowsHide:true });
+    const env={...process.env};
+    delete env.YOJANA_VOICE_LANGUAGE;
+    if (['hi','en'].includes(language)) env.YOJANA_VOICE_LANGUAGE=language;
+    const child = spawn(python, [script], { stdio:['pipe','pipe','pipe'], windowsHide:true, env });
     let output = '', diagnostics = '', settled = false;
     const timer = setTimeout(() => { child.kill(); finish(new Error('Voice transcription timed out')); }, timeoutMs);
     function finish(error, value) { if (settled) return; settled=true; clearTimeout(timer); error ? reject(error) : resolve(value); }

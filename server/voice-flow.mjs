@@ -3,7 +3,7 @@ function spokenChoice(text) {
   const normalized=String(text).trim().toLocaleLowerCase().replace(/[.!?।,]/gu,'').trim();
   return ({one:'1',two:'2',three:'3',four:'4',five:'5',six:'6','एक':'1','दो':'2','तीन':'3','चार':'4','पांच':'5','पाँच':'5','छह':'6','१':'1','२':'2','३':'3','४':'4','५':'5','६':'6'})[normalized] || normalized;
 }
-export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaireReply=()=>false, now=Date.now, diagnostic=()=>{} }) {
+export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaireReply=()=>false, selectedLanguage=()=>null, now=Date.now, diagnostic=()=>{} }) {
   const states=new Map();
   const current=id=>{const s=states.get(id);if(s && s.expires<now()){states.delete(id);return null;}return s;};
   const prompt='Send one short Hindi or English voice question. Confirm the transcription before I answer. Voice is processed locally. Do not send Aadhaar, bank details or other private information.\nहिंदी या अंग्रेज़ी में छोटा आवाज़ वाला सवाल भेजें। जवाब से पहले लिखी हुई बात की पुष्टि करें। आधार या बैंक जानकारी न भेजें।';
@@ -14,7 +14,7 @@ export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaire
       states.delete(id);
       try {
         diagnostic('transcription started');
-        const result=await transcribe(audio);
+        const result=await transcribe(audio,{language:selectedLanguage(id)});
         diagnostic('transcription ready for confirmation');
         states.set(id,{phase:'confirm',...result,expires:now()+300000});
         return result.language==='hi'

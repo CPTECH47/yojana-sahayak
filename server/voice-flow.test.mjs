@@ -62,3 +62,10 @@ test('confirmed spoken language and role choices advance the real conversation',
   await flow.handleAudio('chat',Buffer.from('fake'),true);
   assert.match(await flow.handle('chat','confirm'),/PM-KISAN/);
 });
+
+test('selected questionnaire language is passed as a speech hint',async()=>{
+  let options;
+  const flow=createVoiceFlow({fallback:async()=>'',answers:{},selectedLanguage:()=> 'hi',transcribe:async(_audio,value)=>{options=value;return {text:'एक',language:'hi'};}});
+  await flow.handleAudio('chat',Buffer.from('fake'),true);
+  assert.equal(options.language,'hi');
+});

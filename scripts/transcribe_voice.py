@@ -23,7 +23,10 @@ try:
     if not audio.size or audio.size > 61 * 16000:
         raise ValueError('Invalid audio duration')
     stage = 'inference'
-    segments, info = model.transcribe(audio, beam_size=3, vad_filter=True)
+    language = os.environ.get('YOJANA_VOICE_LANGUAGE')
+    if language not in ('hi', 'en'):
+        language = None
+    segments, info = model.transcribe(audio, language=language, beam_size=3, vad_filter=True)
     text = ' '.join(segment.text.strip() for segment in segments).strip()
     print(json.dumps({'text': text, 'language': info.language, 'confidence': info.language_probability}, ensure_ascii=False))
 except Exception as error:
