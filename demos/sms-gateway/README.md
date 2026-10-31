@@ -42,6 +42,21 @@ If the app is already installed, `npm.cmd run connect:usb` sets up/reuses the tu
 
 To remove this demo's tunnel when finished, run the downloaded adb executable with `forward --remove tcp:18080` (or your chosen local port). Do not use `--remove-all`, which could affect unrelated work. Disconnect USB and turn off USB debugging on the phone if you no longer need it.
 
+#### Windows ADB 37.0.1: phone missing or offline
+
+On the tested Windows laptop, the default `LIBADBUSB` backend detected the realme phone inconsistently and logged a USB read failure. After owner approval, switching to Google's documented native compatibility backend restored the authorized connection. This observation does not establish that every missing-device problem has the same cause.
+
+If USB debugging is already approved but this problem returns, run the following from the demo directory in PowerShell:
+
+```powershell
+$env:ADB_USB_LEGACY = '1'
+& ".\.runtime\tools\platform-tools\adb.exe" kill-server
+npm.cmd run connect:usb
+npm.cmd run check:phone
+```
+
+This restarts the local ADB server, interrupting any other ADB sessions and forwarding rules. The environment setting applies to this PowerShell session and its child processes; no global environment or phone security setting is changed. It does not bypass Android's authorization prompt. If using your own `ADB_PATH`, use that executable for `kill-server`. See the [official 37.0.1 release notes](https://developer.android.com/tools/releases/platform-tools).
+
 Reference: [Google platform-tools](https://developer.android.com/tools/releases/platform-tools) and [ADB USB authorization/forwarding](https://developer.android.com/tools/adb). Developer settings and phone-side RSA/SMS prompts require the phone owner. If Windows sees a phone only as a portable file-transfer device, it has not yet established an authorized ADB connection.
 
 ### Local Wi-Fi alternative
@@ -120,4 +135,6 @@ Template `reviewBy: 2026-11-07` is a chosen demo maintenance deadline, not a gov
 
 Eighteen standalone tests passed, covering consent, language, expiry, allowlist, Unicode segments, duplicate/concurrent sends, budget, timeout/restart, redaction, LAN configuration, HTTP origin checks, USB forwarding/authorization/conflict handling, Node setup validation, recipient normalization/retry and hidden password/history behavior. The test suite uses fake Android gateway/adb responses and fictional recipients. `npm run demo` exercised English/Hindi and success/failure/uncertain cases over localhost HTTP. English and Hindi prepare/confirm/simulated-result paths were also observed in the actual browser console. The Node setup wizard was started in an interactive terminal, displayed the USB URL default and cancelled before entering credentials; no execution-policy change or SMS send occurred.
 
-A real authorized USB tunnel and installation of the checksum-verified official release APK were subsequently confirmed. The app's local gateway service and private credentials were not yet configured at the final check. This is not evidence of carrier delivery or a public-ready telephony service. Real gateway/network/SIM/Unicode completeness must be tested after phone setup. No private credentials or real recipient numbers are bundled in the project.
+A real USB/SIM test subsequently completed on 31 October 2026 with Android SMS Gateway v1.78.0. The owner completed private configuration and phone authorization; the current Android user's `SEND_SMS` permission was verified as granted. The authorized USB tunnel, phone health endpoint and authenticated documentation responded. The pinned v1.78.0 server source registers both `/message` and `/messages`; the actual send used the configured `/message` route.
+
+After the user approved the exact text, one English PMUY guidance SMS was submitted to the single consenting allowlisted recipient. The gateway first accepted it, then reported `Delivered`; the user confirmed the complete message in the recipient's normal SMS app. The local counter reserved one estimated segment. No automatic resend occurred. The actual carrier's billing/remaining allowance was not measured. Real Hindi/Unicode delivery, dual-SIM selection and the real browser send button remain untested; previous browser checks used simulation. No private credentials or real recipient numbers are bundled in the project. See `HANDOFF.md` for the physical-test record and remaining integration work.
