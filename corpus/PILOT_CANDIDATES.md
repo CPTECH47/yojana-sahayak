@@ -21,3 +21,13 @@ Contributor: Pulkit. Checked: 2026-10-31. Status: **review required; not in the 
 ## Review and integration gate
 
 These two distinct public documents are candidate additions, not part of the current 3-document runtime corpus. The provided 86-URL directory is discovery only. For a count toward the required 10–20, preserve the source bytes and metadata, verify extraction, use rights, dates and current applicability, agree the shared schema with Charchit, and ensure the server cannot retrieve unreviewed content. No private profile or credential is included.
+
+
+## PMUY-linked generic declaration form: manual extraction
+
+- Official file: [Declaration for new LPG connection](https://www.pmuy.gov.in/Declaration_for_new_connection.pdf), linked from the [PMUY Ujjwala 2.0 application page](https://www.pmuy.gov.in/ujjwala2.html). The page distributes this form and its footer credits IOCL, BPCL and HPCL; neither page identifies the specific issuing body. **Issuer: unclear.**
+- The PDF contains one page (46,167 bytes), SHA-256 `a2a346d9d4f2e283366031575c2950f7b51f2979f7408eb2e862175f016b96ac`. Accessed 2026-10-31. PDF metadata shows file creation 2015-01-06 20:55:14 +05:30, created using Toshiba e-STUDIO306. This is a file-creation timestamp, not a publication or effective date. **Publication/effective date: unstated.**
+- `pypdf` extraction returned no text. I rendered page 1 at 180 dpi and manually read and visually checked the numbered declarations; the failure was text-layer extraction, not page readability. No OCR engine was used.
+- Page 1, declarations 1–3: applicant affirms citizenship and age 18+, and that the applicant or form-defined household has no PSU LPG or domestic PNG connection. Household definition: spouses, unmarried children and dependent parents living together with a common kitchen.
+- Page 1, declarations 4–6 and 9–11: form requests ration-card proof or an alternative, KYC with identity/address proof, domestic use at the declared address, address-change notification and accurate declarations. Declarations 7–8 address additional LPG installations in the same kitchen and use of a second cylinder. These are paraphrases, not verbatim transcription.
+- Limitation: this is a generic domestic LPG connection form, not the PMUY-specific deprivation-category declaration referenced by the FAQ. Do not use it alone for PMUY eligibility or exclusion and keep it out of answer retrieval pending source/issuer review. Unknown household connection status remains unknown; do not coach users to omit or alter information.
