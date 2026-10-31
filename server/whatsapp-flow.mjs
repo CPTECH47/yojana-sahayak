@@ -103,7 +103,7 @@ function formatRecommendation(result, language) {
   const questions = Object.values(questionSets).flat();
   const missing = (item.missing_fields || []).map(key => questions.find(question => question.key === key)?.[language] || key);
   const missingText = missing.length
-    ? `\n${language === 'hi' ? '• जिन सवालों के जवाब बाकी हैं:' : '• Answers still needed:'}\n${missing.map(question => `  ◦ ${question}`).join('\n')}`
+    ? `\n• ${language === 'hi' ? `${missing.length} जवाब छोड़ा गया है। उसे एक-एक करके देने के लिए NEXT भेजें।` : `${missing.length} answer was skipped. Send NEXT to answer it one question at a time.`}`
     : '';
   const groupedCitations = new Map();
   for (const citation of item.citations || []) {
@@ -119,16 +119,20 @@ function formatRecommendation(result, language) {
   const note = language === 'hi'
     ? 'यह शुरुआती जाँच है, सरकारी निर्णय नहीं। पूरी शर्तें आधिकारिक पोर्टल या स्थानीय कार्यालय से जाँचें।'
     : 'Preliminary check only, not an official decision. Verify the full rules with the official portal or local office.';
-  const csc = language === 'hi'
-    ? 'नज़दीकी सेवा केंद्र खोजने के लिए 6 अंकों का PIN कोड या शहर का नाम भेजें। नहीं चाहिए तो SKIP भेजें। आधिकारिक CSC सूची: https://locator.csccloud.in/ (वहाँ अपना क्षेत्र चुनें)।'
-    : 'To search for nearby service centres, reply with a 6-digit PIN code or town name. Send SKIP if you do not need this. Official CSC locator: https://locator.csccloud.in/ (select your area there).';
-  const next = item.status === 'not_matched'
-    ? (language === 'hi' ? '• अगला कदम: यदि कोई जवाब गलत था, YOJANA START भेजकर सही जानकारी के साथ फिर जाँचें। नियमों और अन्य योजनाओं के लिए आधिकारिक कार्यालय से पूछें।' : '• Next: If an answer was wrong, send YOJANA START and check again with correct details. Ask the official office about the rules and other schemes.')
-    : (language === 'hi' ? '• अगला कदम: छूटे हुए जवाब देने या सुधारने के लिए YOJANA START भेजें। आवेदन से पहले आधिकारिक नियम जाँचें।' : '• Next: Send YOJANA START to supply or correct answers. Check the official rules before applying.');
-  const documents = item.scheme_id === 'pmuy'
-    ? (language === 'hi' ? '• आवश्यक दस्तावेज़: PMUY की आधिकारिक सूची देखें: https://pmuy.gov.in/ujjwala2.html' : '• Required documents: See the official PMUY list: https://pmuy.gov.in/ujjwala2.html')
-    : (language === 'hi' ? '• आवश्यक दस्तावेज़: आधिकारिक योजना पोर्टल या कार्यालय से सूची की पुष्टि करें।' : '• Required documents: Confirm the list with the official scheme portal or office.');
-  return `*${item.scheme_name}*\n• ${status}${explanation ? `\n${explanation}` : ''}${missingText}\n• ${note}\n${next}\n${documents}${sources ? `\n• ${sources.replaceAll('\n', '\n• ')}` : ''}\n• ${csc}`;
+  return `*${item.scheme_name}*\n• ${status}${explanation ? `\n${explanation}` : ''}${missingText}\n• ${note}${sources ? `\n• ${sources.replaceAll('\n', '\n• ')}` : ''}`;
+}
+
+function cscOfferPrompt(language, error = false) {
+  const lead = error ? (language === 'hi' ? 'कृपया हाँ या नहीं चुनें।\n' : 'Please reply YES or NO.\n') : '';
+  return language === 'hi'
+    ? `${lead}क्या आप नज़दीकी सेवा केंद्र खोजने में मदद चाहते हैं?\n1 हाँ\n2 नहीं`
+    : `${lead}Would you like help finding a nearby service centre?\nReply YES or NO.`;
+}
+
+function cscLocationPrompt(language) {
+  return language === 'hi'
+    ? '6 अंकों का PIN कोड या शहर का नाम भेजें। खोज छोड़ने के लिए SKIP भेजें।'
+    : 'Send a 6-digit PIN code or town name. Send SKIP to leave the centre search.';
 }
 
 function infoOnly(role, language, passages) {
@@ -170,7 +174,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     if(old?.storage_consent)store.put('profiles',store.id(chatId),{...old,language:state.language,profile:state.profile,profiles:completed});
   }
   function resultControls(language) {
-    return language==='hi'?'सुधार: EDIT 1 (सवाल का नंबर), आगे: NEXT, दूसरी भूमिका: ROLE, सहेजें: SAVE, फिर खोलें: RESUME, अपडेट: ALERTS ON, बंद: STOP, मिटाएँ: DELETE।':'Correct: EDIT 1 (question number), continue: NEXT, another role: ROLE, save: SAVE, resume: RESUME, updates: ALERTS ON, unsubscribe: STOP, erase: DELETE.';
+    return language==='hi'?'अगला: NEXT · जवाब सुधारें: EDIT 1 · दूसरी भूमिका: ROLE · सहेजें: SAVE · केंद्र खोजें: CSC':'Next: NEXT · correct an answer: EDIT 1 · another role: ROLE · save: SAVE · find a centre: CSC';
   }
   async function answerQuestion(chatId,text,language) {
     const result=await answers.chat({question:text,language});
@@ -195,19 +199,32 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     const state = questionnaireByChat.get(chatId);
     const language=languageByChat.get(chatId)||saved(chatId)?.language||'en';
     if (value === 'csc') {
-      awaitingCsc.set(chatId,now()+300000);
-      return language==='hi' ? 'CSC खोजने के लिए 6 अंकों का PIN कोड या शहर का नाम भेजें। रद्द करने के लिए CANCEL भेजें।' : 'Send a 6-digit PIN code or town name to search for a CSC. Send CANCEL to stop.';
+      awaitingCsc.set(chatId,{phase:'location',expiresAt:now()+300000});
+      return cscLocationPrompt(language);
     }
-    if (awaitingCsc.get(chatId) && awaitingCsc.get(chatId) > now()) {
-      if (value === 'cancel' || value === 'skip' || value === 'start') { awaitingCsc.delete(chatId); if(value!=='start') return language==='hi'?'केंद्र की खोज छोड़ दी गई। सवाल पूछने के लिए YOJANA के बाद अपना सवाल भेजें।':'Centre search skipped. Send YOJANA followed by your question whenever you need help.'; }
-      else if (/^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next)$/iu.test(value) || /[?？]/u.test(text)) awaitingCsc.delete(chatId);
-      else {
+    const cscState=awaitingCsc.get(chatId);
+    if(cscState?.expiresAt>now()){
+      if(cscState.phase==='offer'){
+        const hindiChoice=language==='hi'?{'1':true,'2':false}:{};
+        const answer=Object.hasOwn(hindiChoice,value)?hindiChoice[value]:parseYesNo(text);
+        if(answer===true){awaitingCsc.set(chatId,{phase:'location',expiresAt:now()+300000});return cscLocationPrompt(language);}
+        if(answer===false || value==='cancel' || value==='skip'){
+          awaitingCsc.delete(chatId);
+          return `${language==='hi'?'ठीक है, केंद्र खोज छोड़ दी गई।':'Okay, centre search skipped.'}\n\n${resultControls(language)}`;
+        }
+        if(value==='start' || /^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next|csc)$/iu.test(value) || /[?？]/u.test(text))awaitingCsc.delete(chatId);
+        else return cscOfferPrompt(language,true);
+      }else if(cscState.phase==='location'){
+        if (value === 'cancel' || value === 'skip' || value === 'start') { awaitingCsc.delete(chatId); if(value!=='start') return `${language==='hi'?'केंद्र की खोज छोड़ दी गई।':'Centre search skipped.'}\n\n${resultControls(language)}`; }
+        else if (/^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next|csc)$/iu.test(value) || /[?？]/u.test(text)) awaitingCsc.delete(chatId);
+        else {
         const area=String(text).trim();
         if (!/^[\p{L}\p{M}\p{N} .,'-]{2,60}$/u.test(area) || (/^\d+$/.test(area) && !/^[1-9]\d{5}$/.test(area))) return language==='hi'?'कृपया सही 6 अंकों का PIN कोड या शहर का नाम भेजें।':'Please send a valid 6-digit PIN code or a town name.';
         awaitingCsc.delete(chatId);
         const url=new URL('https://www.google.com/maps/search/');
         url.searchParams.set('api','1');url.searchParams.set('query',`Common Service Centre ${area} India`);
         return language==='hi' ? `Google Maps पर सेवा केंद्र खोजें:\n${url}\n\nलिस्टिंग की CSC के रूप में पुष्टि नहीं की गई है। जाने से पहले फोन करके योजना की सेवा और शुल्क पूछें।\nआधिकारिक CSC खोज: https://locator.csccloud.in/` : `Search Google Maps for service centres:\n${url}\n\nListings are not verified as CSCs. Call before visiting to check the scheme service and any fee.\nOfficial CSC locator: https://locator.csccloud.in/`;
+        }
       }
     }
     if(value==='delete') {
@@ -242,8 +259,8 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       const role=old.profile.scheme_id==='pm-kisan'?'farmer':old.profile.scheme_id==='pmuy'?'family':'worker';
       questionnaireByChat.set(chatId,{phase:'complete',language:old.language,role,profile:old.profile,index:0});
       const result=answers.recommend({profile:old.profile,language:old.language});
-      if(result.results?.length)awaitingCsc.set(chatId,now()+300000);
-      return formatRecommendation(result,old.language)+'\n'+resultControls(old.language);
+      if(result.results?.length)awaitingCsc.set(chatId,{phase:'offer',expiresAt:now()+300000});
+      return `${formatRecommendation(result,old.language)}\n\n${cscOfferPrompt(old.language)}`;
     }
 
     if (isStart(text)) {
@@ -328,9 +345,8 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       if (answer === undefined) return currentQuestion(state, true);
       const step = questionSets[state.role][state.index];
       const profile = { ...state.profile, [step.key]: answer };
-      const partial=answers.recommend({profile,language:state.language});
-      const nextIndex = state.index + 1;
-      if (nextIndex < questionSets[state.role].length && partial.results?.[0]?.status!=='not_matched') {
+      const nextIndex = questionSets[state.role].findIndex((question,index)=>index>state.index && typeof profile[question.key]!=='boolean');
+      if (nextIndex >= 0) {
         const next = { ...state, profile, index: nextIndex };
         questionnaireByChat.set(chatId, next);
         return currentQuestion(next);
@@ -341,8 +357,8 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       remember(chatId,completed);
       try {
         const result = answers.recommend({ profile, language: state.language });
-        if(result.results?.length)awaitingCsc.set(chatId,now()+300000);
-        return `${formatRecommendation(result, state.language)}\n\n${resultControls(state.language)}`;
+        if(result.results?.length)awaitingCsc.set(chatId,{phase:'offer',expiresAt:now()+300000});
+        return `${formatRecommendation(result, state.language)}\n\n${cscOfferPrompt(state.language)}`;
       } catch {
         return state.language === 'hi' ? 'सुझाव सेवा अभी उपलब्ध नहीं है। बाद में फिर कोशिश करें।' : 'The recommendation service is unavailable. Please try again later.';
       }
@@ -371,7 +387,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   }
 
   function acceptsBareQuestionnaireReply(chatId, text) {
-    if (awaitingCsc.get(chatId) > now() && String(text ?? '').trim()) return true;
+    if (awaitingCsc.get(chatId)?.expiresAt > now() && String(text ?? '').trim()) return true;
     const phase = questionnaireByChat.get(chatId)?.phase;
     if((phase || saved(chatId)) && /^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next|cancel)$/iu.test(normalize(text)))return true;
     if (phase === 'language') return ['1', '2'].includes(normalize(text));

@@ -56,25 +56,24 @@ test('START asks language, then role, and farmer questions produce a sourced pre
   await flow.handle('chat-a', 'no');
   const result = await flow.handle('chat-a', 'SKIP');
   assert.match(result, /अधिक जानकारी चाहिए/u);
-  assert.match(result, /जिन सवालों के जवाब बाकी हैं/u);
-  assert.match(result, /कोई अन्य अपवाद/u);
   assert.match(result, /pmkisan.gov.in/u);
   assert.equal(calls.at(-1).profile.scheme_id, 'pm-kisan');
   assert.equal(calls.at(-1).profile.owns_cultivable_land, true);
   assert.equal(calls.at(-1).profile.income_tax_payer_last_year, false);
   assert.equal(calls.at(-1).profile.other_official_exclusion, null);
-  assert.match(result,/जिन सवालों के जवाब बाकी हैं/u);
+  assert.match(result,/1 जवाब छोड़ा गया/u);
 });
 
 test('failed and skipped conditions are reported separately with a way to restart', async () => {
   const { flow } = conversation();
   await startAndChoose(flow, 'chat-a', '2');
   await flow.handle('chat-a', '3');
-  for (const answer of ['yes', 'skip', 'yes']) await flow.handle('chat-a', answer);
-  const result = await flow.handle('chat-a', 'yes');
+  for (const answer of ['yes', 'skip', 'yes', 'yes', 'no']) await flow.handle('chat-a', answer);
+  const result = await flow.handle('chat-a', 'no');
   assert.match(result, /Coverage under EPF, ESIC or NPS was reported/u);
-  assert.match(result, /Answers still needed:[\s\S]*monthly income/u);
-  assert.match(result, /YOJANA START/u);
+  assert.match(result, /1 answer was skipped/u);
+  assert.doesNotMatch(result, /monthly income/u);
+  assert.match(result, /Send NEXT/u);
 });
 
 test('family questionnaire recommends PMUY only as a preliminary match with its sources', async () => {
@@ -87,9 +86,9 @@ test('family questionnaire recommends PMUY only as a preliminary match with its 
   assert.match(result, /PMUY/u);
   assert.match(result, /संभावित मेल/u);
   assert.match(result, /pmuy.gov.in\/ujjwala2.html/u);
-  assert.match(result, /आवश्यक दस्तावेज़/u);
-  assert.match(result, /PIN कोड/u);
-  assert.match(result, /locator\.csccloud\.in/u);
+  assert.match(result, /नज़दीकी सेवा केंद्र/u);
+  assert.doesNotMatch(result, /PIN कोड/u);
+  assert.match(await flow.handle('chat-a', '1'), /PIN कोड/u);
   assert.equal(calls.at(-1).profile.scheme_id, 'pmuy');
   assert.equal(calls.at(-1).profile.household_has_existing_lpg, false);
 });
@@ -114,16 +113,15 @@ test('recommendation reply keeps a short summary, groups repeated source pages, 
   await startAndChoose(flow, 'chat-a', '2');
   await flow.handle('chat-a', '1');
   for (const answer of ['yes', 'no']) await flow.handle('chat-a', answer);
-  const result = await flow.handle('chat-a', 'yes');
+  await flow.handle('chat-a', 'yes');
+  const result = await flow.handle('chat-a', 'no');
   assert.match(result, /Does not match one or more checked conditions/u);
   assert.match(result, /Preliminary check only/u);
   assert.match(result, /page 2, page 3/u);
   assert.equal((result.match(/Source:/gu) || []).length, 1);
-  assert.match(result, /locator\.csccloud\.in/u);
-  assert.match(result, /select your area there/u);
-  assert.match(result, /If an answer was wrong/u);
-  assert.match(result, /Required documents/u);
-  assert.doesNotMatch(result, /Confirm with the official scheme portal or help desk/u);
+  assert.match(result, /nearby service centre/u);
+  assert.doesNotMatch(result, /6-digit PIN/u);
+  assert.doesNotMatch(result, /Required documents/u);
 });
 
 test('CSC search creates an encoded Maps link after a valid PIN, with an official fallback',async()=>{
@@ -150,18 +148,19 @@ test('CSC search accepts a town and can be cancelled',async()=>{
   await flow.handle('a','CSC');assert.match(await flow.handle('a','CANCEL'),/छोड़/u);
 });
 
-test('completed scheme result immediately asks for a location and accepts a bare PIN or skip',async()=>{
+test('completed scheme result offers centre help before asking for a PIN or town',async()=>{
   const {flow}=conversation();
   await startAndChoose(flow,'a','2');
   await flow.handle('a','5');await flow.handle('a','yes');await flow.handle('a','no');
   const result=await flow.handle('a','yes');
-  assert.match(result,/reply with a 6-digit PIN code or town name/);
-  assert.equal(flow.acceptsBareQuestionnaireReply('a','263139'),true);
+  assert.match(result,/Would you like help finding a nearby service centre/);
+  assert.doesNotMatch(result,/6-digit PIN code/u);
+  assert.match(await flow.handle('a','YES'),/6-digit PIN code/u);
   const maps=await flow.handle('a','263139');
   assert.match(maps,/google\.com\/maps\/search/);
   assert.match(maps,/not verified as CSCs/);
   await startAndChoose(flow,'b','2');await flow.handle('b','5');await flow.handle('b','yes');await flow.handle('b','no');await flow.handle('b','yes');
-  assert.match(await flow.handle('b','SKIP'),/Centre search skipped/);
+  assert.match(await flow.handle('b','NO'),/centre search skipped/i);
 });
 
 test('worker questionnaire checks only sourced PM-SYM conditions, including income band', async () => {

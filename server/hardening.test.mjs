@@ -53,15 +53,17 @@ test('a missing PAN card question is not answered from a generic application pas
     assert.deepEqual(english.citations,[]);assert.deepEqual(hindi.citations,[]);
   }
 });
-test('questions can interrupt a questionnaire; exclusions stop further unnecessary questions',async()=>{
+test('questions can interrupt a questionnaire; a failed condition does not bundle later questions',async()=>{
  const service=createAnswerService({passages,model:async()=>({fact_ids:['pmkisan-home-2026:1']})});
  const flow=createWhatsAppConversation({answers:service,passages});
  await flow.handle('qa','START');await flow.handle('qa','2');
  assert.match(await flow.handle('qa','What is the PM-KISAN benefit?'),/per year/u);
  await flow.handle('qa','1');
  assert.match(await flow.handle('qa','What is the PM-KISAN benefit?'),/per year/u);
- const failed=await flow.handle('qa','no');
- assert.match(failed,/Does not match/u);assert.match(failed,/Answers still needed/u);
+ const next=await flow.handle('qa','no');
+ assert.match(next,/income tax/u);assert.doesNotMatch(next,/Does not match/u);
+ await flow.handle('qa','no');await flow.handle('qa','no');
+ const failed=await flow.handle('qa','no');assert.match(failed,/Does not match/u);
  assert.match(await flow.handle('qa','EDIT 1'),/cultivable land/u);
 });
 test('SAVE, RESUME, separate alert consent and DELETE survive conversation restarts',async()=>{
@@ -74,7 +76,7 @@ test('SAVE, RESUME, separate alert consent and DELETE survive conversation resta
  await flow.handle('qa','SAVE');assert.equal(store.get('profiles','qa').alert_opt_in,false);
  await flow.handle('qa','ALERTS ON');assert.equal(store.get('profiles','qa').alert_opt_in,true);
  flow=createWhatsAppConversation({answers:service,passages,store});
- assert.match(await flow.handle('qa','RESUME'),/Answers still needed[\s\S]*exclusion/iu);
+ assert.match(await flow.handle('qa','RESUME'),/1 answer was skipped/iu);
  assert.match(await flow.handle('qa','EDIT 4'),/exclusion/u);
  await flow.handle('qa','no');
  assert.equal(store.get('profiles','qa').profile.other_official_exclusion,false);
