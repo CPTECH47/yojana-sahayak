@@ -1,5 +1,13 @@
 # Server integration handoff
 
+## Judge-facing README — 1 November 2026
+
+- Rewrote `README.md` with the LinkPulse reference's project-first structure: problem, solution, demo, features, scheme coverage, RAG diagram, stack, setup, API, verification and limitations. Removed stale three-scheme/ten-document statements and outdated repair-branch instructions. Current voice input, transcript confirmation, CSC consent/search, natural descriptions, source monitoring and spam controls are described; same-language TTS remains explicitly planned.
+- Published the README alone to default `main` as `1888fb5`; no application code or PR was merged. Its opening note and clone command point to `captain/server-integration`, and all nine project-file links are branch-qualified because main still contains the earlier pilot. The GitHub connector rejected the file write with 403; the existing authenticated Git remote successfully published the documentation-only commit.
+- Files in this captain update: `README.md`, `handoffs/server-integration.md`. No API fields, source approvals, credentials or runtime behavior changed. Existing untracked `.hallmark/`, `output/` and `tmp/` were left alone.
+- Verification: `npm.cmd run build` passed; `node scripts/release-check.mjs --date=2026-11-01` passed with 11 usable documents, 18 supported answer records and six scheme areas. All nine linked project files exist; Markdown code fences, UTF-8 text and `git diff --check` passed. A separate read-only reviewer found no required factual corrections. The README labels 139 Node/13 Python tests as previously recorded implementation results; those suites and live WhatsApp were not rerun for this documentation-only update.
+- Remaining: independent team review of the three policy additions before public release, full current handset regression, continuous public deployment and the planned voice-output implementation. The documentation does not claim these are complete.
+
 ## Private test allowlist — 31 October 2026
 
 - Added an empty-by-default `YOJANA_TEST_ALLOWLIST` setting, configured only in the local ignored `.env` for the two testers Charchit supplied. The actual numbers are not in Git. `server/tester-allowlist.mjs` validates international numbers and matches trusted direct phone JIDs or Baileys `senderPn` metadata for LID chats. No message text/display name can grant an exemption.
