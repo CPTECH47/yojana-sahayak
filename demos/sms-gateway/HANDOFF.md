@@ -15,12 +15,12 @@ Tejas asked for an automated real-SMS demo using an Android gateway. This separa
 
 ## Validation performed
 
-- `npm.cmd test`: 8/8 passed, with fake gateway responses and fictional recipients only.
+- Current standalone `npm.cmd test`: 15/15 passed, with fake gateway/adb responses and fictional recipients only, including three Node-wizard tests.
 - USB update: 12/12 standalone tests passed, including unauthorized/multiple-device error handling, forwarding reuse/conflict refusal and invalid-port refusal (fake adb). A real authorized USB tunnel was subsequently created from laptop port 18080 to phone port 8080, and the digest-verified release APK install returned Success. The phone gateway service was not yet responding, so the application data path and carrier delivery remain unverified.
-- Team-repository `npm.cmd test` from the publication checkout based on captain commit `a64221d`: 62/62 passed after the USB update, including this demo's twelve tests.
+- Team-repository `npm.cmd test` from the publication checkout based on captain commit `a64221d`: 65/65 passed after the Node setup update, including this demo's fifteen tests.
 - `npm.cmd run demo`: localhost HTTP rehearsal passed for consent refusal, Hindi/English, failure, uncertainty and repeated message IDs.
 - `node --check public/app.js` and `node --check src/server.mjs`: passed.
-- PowerShell parser check for `scripts/setup-phone.ps1`: passed; the interactive wizard has not yet been completed with a phone.
+- `setup:phone` now runs a Node.js wizard, replacing the blocked PowerShell file. Verified interactive startup and USB default, then cancelled before entering credentials; no real phone configuration was changed. Tests verify hidden password echo/history protection, private config validation and preservation of old config on invalid inputs. The wizard has not yet been completed with real phone credentials.
 - Actual browser console: prepared and confirmed English and Hindi simulated messages, and observed the clearly labelled simulated message log. No real number entered or message transmitted to a carrier.
 - Official Android release `v1.78.0` secure APK downloaded locally; SHA256 `a4511489074d9a5eba52e0b2ab68eede3c184391b16afb46514b4bcf9bee565e` matched the GitHub release asset digest. APK stays in ignored `.runtime/downloads` and is not committed or installed automatically.
 

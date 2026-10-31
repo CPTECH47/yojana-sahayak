@@ -8,7 +8,7 @@
     "start": "node src/server.mjs",
     "demo": "node scripts/demo.mjs",
     "test": "node --test",
-    "setup:phone": "powershell -NoProfile -File scripts/setup-phone.ps1",
+    "setup:phone": "node scripts/setup-phone.mjs",
     "check:phone": "node scripts/check-phone.mjs",
     "connect:usb": "node scripts/usb-phone.mjs",
     "install:phone": "node scripts/usb-phone.mjs --install"
