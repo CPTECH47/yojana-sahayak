@@ -12,9 +12,9 @@ export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaire
     async handleAudio(id, audio, activeConversation=false){
       if(!activeConversation && !this.acceptsAudio(id))return null;
       states.delete(id);
+      const languageMenu=choosingLanguage(id);
       try {
         diagnostic('transcription started');
-        const languageMenu=choosingLanguage(id);
         let result;
         try { result=await transcribe(audio,{language:selectedLanguage(id)}); }
         catch(error) { if(!languageMenu || !['unsupported detected language','empty or invalid transcript'].includes(error?.message)) throw error; }
@@ -34,6 +34,7 @@ export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaire
       } catch (error) {
         const safe=['empty or invalid transcript','unsupported detected language','low language confidence','invalid worker response','Voice transcription unavailable','Voice transcription timed out','voice worker input failed','voice worker model failed','voice worker decode failed','voice worker inference failed'];
         diagnostic('transcription failed: '+(safe.includes(error?.message)?error.message:'worker error'));
+        if(languageMenu)return 'Could not reliably hear the language choice. Please type 1 for Hindi or 2 for English.\nभाषा का विकल्प स्पष्ट नहीं हुआ। हिंदी के लिए 1 या अंग्रेज़ी के लिए 2 लिखें।';
         return 'Voice could not be transcribed reliably. Please record again or type your question.\nआवाज़ स्पष्ट नहीं समझी गई। दोबारा रिकॉर्ड करें या सवाल लिखकर भेजें।';
       }
     },

@@ -95,3 +95,8 @@ test('unrecognised language choice falls back to typing without guessing',async(
   const flow=createVoiceFlow({answers:{},fallback:async()=>'',choosingLanguage:()=>true,transcribe:async()=>({text:'unclear',language:'en'})});
   assert.match(await flow.handleAudio('a',Buffer.from('fake'),true),/type 1 for Hindi or 2 for English/);
 });
+
+test('speech worker failure at language menu offers the typed choices',async()=>{
+  const flow=createVoiceFlow({answers:{},fallback:async()=>'',choosingLanguage:()=>true,transcribe:async()=>{throw Error('voice worker inference failed')}});
+  assert.match(await flow.handleAudio('a',Buffer.from('fake'),true),/type 1 for Hindi or 2 for English/);
+});
