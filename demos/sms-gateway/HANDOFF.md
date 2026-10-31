@@ -11,11 +11,13 @@ Tejas asked for an automated real-SMS demo using an Android gateway. This separa
 - Persist-before-network duplicate protection; no blind retries; restart turns in-flight attempts into uncertain state; previews expire on restart.
 - Explicit gateway acceptance versus gateway-reported delivery; the receiving phone remains the final real-demo check.
 - Local setup wizard with masked password input, read-only phone health check and complete README/API instructions.
+- USB alternative: `npm run install:phone` downloads official tools, checks one authorized physical phone, forwards only the requested localhost port and installs the digest-checked release APK. `npm run connect:usb` reuses the tunnel without app installation. Owner approval on the handset remains required.
 
 ## Validation performed
 
 - `npm.cmd test`: 8/8 passed, with fake gateway responses and fictional recipients only.
-- Team-repository `npm.cmd test` from the publication checkout based on captain commit `a64221d`: 58/58 passed, including this demo's eight tests.
+- USB update: 12/12 standalone tests passed, including unauthorized/multiple-device error handling, forwarding reuse/conflict refusal and invalid-port refusal (fake adb). A real authorized USB tunnel was subsequently created from laptop port 18080 to phone port 8080, and the digest-verified release APK install returned Success. The phone gateway service was not yet responding, so the application data path and carrier delivery remain unverified.
+- Team-repository `npm.cmd test` from the publication checkout based on captain commit `a64221d`: 62/62 passed after the USB update, including this demo's twelve tests.
 - `npm.cmd run demo`: localhost HTTP rehearsal passed for consent refusal, Hindi/English, failure, uncertainty and repeated message IDs.
 - `node --check public/app.js` and `node --check src/server.mjs`: passed.
 - PowerShell parser check for `scripts/setup-phone.ps1`: passed; the interactive wizard has not yet been completed with a phone.
@@ -24,7 +26,7 @@ Tejas asked for an automated real-SMS demo using an Android gateway. This separa
 
 ## Physical setup pending
 
-The user has an Android phone with an active SIM and reports 100 SMS/day. The app is not remotely installed or configured. The phone owner must install the official release, grant SMS sending permission, start Local Server and enter the LAN URL, credentials and consenting recipient through `npm.cmd run setup:phone` on the local machine. Those secrets must not be pasted into a GitHub issue or this handoff.
+The user has an Android phone with an active SIM and reports 100 SMS/day. Google adb 37.0.1 was downloaded locally; phone-side authorization was completed by the owner. USB forwarding and the official APK installation succeeded. A tool policy blocked the attempted command to launch the phone app (no detailed reason supplied); no app authentication/permission dialog was automated. The owner must open SMS Gateway, grant SMS sending permission, start Local Server and enter the USB/LAN URL, credentials and consenting recipient through `npm.cmd run setup:phone` on the local machine. Those secrets must not be pasted into a GitHub issue or this handoff.
 
 Run `npm.cmd run check:phone` first. It only checks health; then prepare and confirm ONE real SMS. A Hindi PMUY message currently estimates two SMS segments. The real SIM's total usage includes other phone apps and cannot be inferred from this demo's counter.
 

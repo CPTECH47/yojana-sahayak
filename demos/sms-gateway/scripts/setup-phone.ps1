@@ -3,9 +3,13 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $runtimePath = Join-Path $projectRoot '.runtime'
 New-Item -ItemType Directory -Force -Path $runtimePath | Out-Null
 Write-Host 'Keep credentials here on your laptop. This setup sends no SMS.'
-Write-Host 'On Android: install the official SMS Gateway app, grant SEND_SMS, enable Local Server, and join the same trusted Wi-Fi as this laptop.'
+Write-Host 'On Android: install the official SMS Gateway app, grant SEND_SMS, and enable Local Server. Use a configured USB tunnel or the same trusted Wi-Fi.'
 Write-Host 'Official releases: https://github.com/capcom6/android-sms-gateway/releases'
-$gatewayUrl = Read-Host 'Phone LAN URL (example http://192.168.1.20:8080)'
+$usbPath = Join-Path $runtimePath 'usb.json'
+$defaultUrl = ''
+if (Test-Path -LiteralPath $usbPath) { $defaultUrl = (Get-Content -LiteralPath $usbPath -Raw | ConvertFrom-Json).gatewayUrl }
+$gatewayUrl = Read-Host "Phone URL (USB default: $defaultUrl; Wi-Fi example http://192.168.1.20:8080)"
+if ([string]::IsNullOrWhiteSpace($gatewayUrl) -and $defaultUrl) { $gatewayUrl = $defaultUrl }
 $username = Read-Host 'Local Server username shown in the app'
 $securePassword = Read-Host 'Local Server password' -AsSecureString
 $recipient = Read-Host 'One consenting test recipient in international format (+91 followed by 10 digits)'

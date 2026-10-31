@@ -2,7 +2,7 @@
 
 A separate, dependency-free Node.js demonstration of the outgoing SMS journey:
 
-`Reviewed message -> tester consent -> local backend -> Android SMS Gateway -> SIM network -> recipient phone`
+`Reviewed message -> tester consent -> local backend -> USB tunnel or local Wi-Fi -> Android SMS Gateway -> SIM network -> recipient phone`
 
 The default simulator contacts no phone, provider or carrier. Real mode uses one configured Android phone and explicitly allowlisted test recipients. It never uses Baileys to send SMS. It does not modify or launch the existing WhatsApp bot.
 
@@ -21,6 +21,30 @@ Open **http://127.0.0.1:3012/**. Choose PMUY application guidance or the officia
 Run those commands from this demo's directory. In the team repository this is `demos/sms-gateway`; the separate local copy is `C:\Users\ACER\Documents\Codex\2026-10-30\acess-m\work\yojana-sms-demo`.
 
 ## Connect your Android phone
+
+### USB connection (Wi-Fi not required)
+
+The USB cable carries requests between the laptop and the gateway. The recipient SMS still travels over the SIM's mobile network, not the USB cable. Normal charging/file-transfer USB mode alone is insufficient for this tunnel.
+
+1. Connect and unlock one Android phone with a data-capable cable. Enable USB debugging in the phone's Developer options. Approve the laptop's RSA debugging prompt yourself; do this only for your trusted laptop. Phone authentication and permission dialogs are not automated. You can disable debugging again after testing.
+2. From this demo directory run:
+
+```powershell
+npm.cmd run install:phone
+```
+
+This downloads official Google platform-tools into ignored `.runtime/tools` if adb is unavailable, checks the single authorized physical USB device, creates a localhost `18080 -> phone 8080` forwarding rule and installs the checksum-pinned official release APK. No global PATH changes, root access, bootloader unlocking, permission grants, device resets or SMS sends occur. An existing different forwarding rule is not overwritten. The APK's installation/update may itself require confirmation on your phone. A missing/unauthorized device causes an explicit stop.
+
+3. Open SMS Gateway on the phone, grant the SMS sending permission when asked, enable **Local Server**, and tap **Start Service**. Keep the USB cable connected. Note the username/password shown by the local server, and the message route in the app's `/docs`.
+4. Run `npm.cmd run setup:phone`. Press Enter at its phone-URL prompt to use the generated USB address `http://127.0.0.1:18080`; enter the gateway credentials and one consenting test recipient privately. Then run `npm.cmd run check:phone` and restart the operator demo before confirming one real SMS.
+
+If the app is already installed, `npm.cmd run connect:usb` sets up/reuses the tunnel without installing anything. Re-run that command after unplugging/reconnecting the phone. If local configuration already exists, only its gateway URL is changed to the USB address, with a local backup; no send is triggered. For another phone gateway port, set `SMS_PHONE_PORT`; for another laptop tunnel port set `SMS_USB_LOCAL_PORT` before running the command. Both must be between 1024 and 65535. `ADB_PATH` can identify an existing adb executable.
+
+To remove this demo's tunnel when finished, run the downloaded adb executable with `forward --remove tcp:18080` (or your chosen local port). Do not use `--remove-all`, which could affect unrelated work. Disconnect USB and turn off USB debugging on the phone if you no longer need it.
+
+Reference: [Google platform-tools](https://developer.android.com/tools/releases/platform-tools) and [ADB USB authorization/forwarding](https://developer.android.com/tools/adb). Developer settings and phone-side RSA/SMS prompts require the phone owner. If Windows sees a phone only as a portable file-transfer device, it has not yet established an authorized ADB connection.
+
+### Local Wi-Fi alternative
 
 1. Use a phone you own or are authorized to administer, with an active SIM and an appropriate SMS plan. For this project the reported allowance is 100 SMS/day; the demo reserves at most **six estimated segments/day** by default. Other phone apps, carrier counting, international charges and any operator restrictions are outside that counter. Hindi can occupy multiple SMS segments. Use only consenting team test numbers for this demo.
 2. Install the official secure/release APK from [SMS Gateway for Android releases](https://github.com/capcom6/android-sms-gateway/releases). A downloaded copy, when available, is under `.runtime/downloads/`; it is not installed automatically. Do not install the development/insecure variant for a public environment.
@@ -94,6 +118,6 @@ Template `reviewBy: 2026-11-07` is a chosen demo maintenance deadline, not a gov
 
 ## Verified and pending
 
-The eight tests passed, covering consent, language, expiry, allowlist, Unicode segments, duplicate/concurrent sends, budget, timeout/restart, redaction, LAN configuration and HTTP origin checks. The test suite uses fake Android gateway responses and fictional recipients. `npm run demo` exercised English/Hindi and success/failure/uncertain cases over localhost HTTP. English and Hindi prepare/confirm/simulated-result paths were also observed in the actual browser console. JavaScript and setup PowerShell syntax checks passed.
+Twelve standalone tests passed, covering consent, language, expiry, allowlist, Unicode segments, duplicate/concurrent sends, budget, timeout/restart, redaction, LAN configuration, HTTP origin checks and USB forwarding/authorization/conflict handling. The test suite uses fake Android gateway/adb responses and fictional recipients. `npm run demo` exercised English/Hindi and success/failure/uncertain cases over localhost HTTP. English and Hindi prepare/confirm/simulated-result paths were also observed in the actual browser console. JavaScript and setup PowerShell syntax checks passed.
 
-These checks are not evidence of carrier delivery, installed phone software or a public-ready telephony service. Real phone/network/SIM/Unicode completeness must be tested after local setup. No private credentials or real recipient numbers are bundled in the project.
+A real authorized USB tunnel and installation of the checksum-verified official release APK were subsequently confirmed. The app's local gateway service and private credentials were not yet configured at the final check. This is not evidence of carrier delivery or a public-ready telephony service. Real gateway/network/SIM/Unicode completeness must be tested after phone setup. No private credentials or real recipient numbers are bundled in the project.
