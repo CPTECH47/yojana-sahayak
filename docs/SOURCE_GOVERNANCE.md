@@ -20,6 +20,8 @@ Use these manifest states:
 
 The answer service must retrieve passages only from documents with `status: approved`. Candidate material must not silently enter the answer index. A source with `valid_until` is removed automatically after that date and must be rechecked before it can answer again.
 
+On the repair branch, manifest passage_hashes bind passage content and metadata to the reviewed snapshot. Expiry is evaluated in Asia/Kolkata. The importer writes candidates only until a reviewer explicitly publishes concise passages. Updated rules and bilingual answer records require separate pin review. See docs/HARDENING.md for the exact fetch/review/publish procedure and current release gate.
+
 ## Change monitoring (planned, not currently running)
 
 - Check high-priority official source pages about every 30 minutes and lower-priority discovery pages daily, when an updater is implemented.

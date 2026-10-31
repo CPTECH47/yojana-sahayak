@@ -8,7 +8,9 @@ India has many welfare, scholarship, and agriculture schemes, but their eligibil
 
 ## Solution
 
-The assistant retrieves relevant passages from its reviewed scheme corpus before preparing an answer. Answers include a source and page or section locator. If the available sources do not support an answer, it says that the evidence is insufficient. A separate questionnaire checks a limited set of scheme conditions and clearly labels its results as preliminary.
+The assistant retrieves relevant passages, asks the local model to select pinned answer records, and renders their reviewed text with exact evidence citations. It never renders free-form model prose. With the model offline it offers a labelled extractive fallback. Questions outside the bounded records clarify or abstain. Matching requires every pinned supporting rule passage.
+
+The audit repairs live on `codex/project-hardening` pending captain review. Check out that branch explicitly for these changes. Read [the repair and rollout guide](docs/HARDENING.md) before running or releasing it.
 
 ## Demo journey
 
@@ -29,11 +31,13 @@ Tapping a citation opens the official source. Some sources open as long PDF docu
 - Preliminary selected-condition checks for PM-KISAN, PMUY, and PM-SYM.
 - Student and artisan information leads without unsupported eligibility claims.
 - Express endpoints for chat, recommendations, health, and the Supabase practice read.
-- Local Qwen (`qwen3:4b`) for drafting chat answers from retrieved passages.
+- Local Qwen (`qwen3:4b`) for selecting retrieved, pinned answer records.
+- Explicit SAVE/RESUME profile consent, separate update consent and STOP/DELETE controls.
+- A durable local update queue, per-chat ordering and duplicate detection. Update sending is off by default.
 
 ## Demo status and limitations
 
-This repository contains a working local prototype; no public production URL is currently documented here. The WhatsApp questionnaire still needs a paired-phone retest after the latest welcome and reply changes. Local chat answers require Ollama and the `qwen3:4b` model. Recommendation checks are limited to selected reviewed conditions; they do not confirm government eligibility.
+This repository contains a local prototype; no public production URL is documented here. The repaired flow needs a paired-phone retest. Real model selection requires Ollama and `qwen3:4b`; a labelled extractive fallback remains available without them. Matching checks selected conditions and does not confirm government eligibility. Run `npm run check:release` for the current evidence count: ten sources are usable on 31 October 2026, but two expire before 1 November unless reviewed again.
 
 The corpus is an initial quality-controlled set, not comprehensive coverage of all Indian schemes. Student and artisan flows are information-only. Supabase scheme storage, public deployment, live CSC results, automatic nearest-centre lookup, voice, and scheduled source monitoring are not implemented or verified. The CSC link is a manual link-out; users select their state, district, or other area details on the official locator.
 
@@ -53,7 +57,7 @@ The corpus is an initial quality-controlled set, not comprehensive coverage of a
 
 The corpus records source URLs, authorities, verification dates, hashes, status, and page or section locators in `corpus/manifest.json` and `corpus/passages.json`. myScheme, India.gov.in, and data.gov.in are used for discovery and change detection; eligibility answers rely on approved evidence from the issuing ministry or official programme source.
 
-The server excludes unapproved or expired passages, requires evidence for generated answers, and rejects numeric claims not supported by the cited evidence. These checks reduce hallucination risk but cannot guarantee correctness. Users should verify consequential decisions with the issuing authority. The assistant must not request Aadhaar numbers, bank details, or other beneficiary identifiers.
+The server excludes unapproved, expired or altered passages. A model can choose only supported fact IDs; the stored English/Hindi text supplies the final amount, period and conditions. The bounded records can still be incomplete or imperfectly selected, and source review remains necessary. Users should verify consequential decisions with the issuing authority. The assistant must not request Aadhaar numbers, bank details, or other beneficiary identifiers.
 
 ## Run locally on Windows
 
@@ -103,7 +107,7 @@ See [PROJECT_BRIEF.md](PROJECT_BRIEF.md) for exact request and response fields.
 
 Keep credentials in local environment variables or the hosting provider’s secret settings. Never commit `.env`, Baileys session files, Supabase secret or service-role keys, or real user data. Browser code must not contain a Supabase secret key. `.env.example` contains placeholders only.
 
-To rebuild source passages, install `requirements-ingest.txt` in a Python environment and run `python scripts/ingest_sources.py`. Recheck each source before approving an updated version; failed, unreviewed, superseded, or expired evidence must not be used for answers.
+To fetch review candidates, install `requirements-ingest.txt` in a Python environment and use `python scripts/ingest_sources.py --fetch SOURCE_ID`. No-argument invocation only prints help. A separate reviewer-authored approval file is required to publish. See [the repair guide](docs/HARDENING.md) for pinning, private state, alert controls, API authentication and release checks.
 
 ## Further documentation
 

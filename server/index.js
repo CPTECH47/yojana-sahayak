@@ -5,15 +5,49 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAnswerService } from './answer-service.mjs';
 import { loadPassages } from './corpus.mjs';
+import { timingSafeEqual } from 'node:crypto';
 
-const app = express();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const port = Number(process.env.PORT || 3000);
-const answers = createAnswerService();
+export function createApp({answers=createAnswerService(),getPassages=loadPassages,fetchImpl=fetch,token=process.env.API_ACCESS_TOKEN,limit=30,maximum=2}={}) {
+const app = express();
+app.disable('x-powered-by');
+const windows=new Map();let active=0;
+app.use('/api',(request,response,next)=>{
+  if(token){
+    const supplied=Buffer.from(request.headers.authorization || ''),expected=Buffer.from('Bearer '+token);
+    if(supplied.length!==expected.length || !timingSafeEqual(supplied,expected))return response.status(401).json({status:'error',reason_code:'unauthorized'});
+  }
+  const now=Date.now(),ip=request.ip;
+  for(const [key,value] of windows)if(value.until<=now)windows.delete(key);
+  if(!windows.has(ip) && windows.size>=1000)return response.status(429).json({status:'error',reason_code:'busy'});
+  const bucket=windows.get(ip)||{count:0,until:now+60000};bucket.count++;windows.set(ip,bucket);
+  if(bucket.count>limit){response.set('Retry-After','60');return response.status(429).json({status:'error',reason_code:'rate_limited'});}
+  if(request.method==='POST'){
+    if(active>=maximum)return response.status(503).json({status:'error',reason_code:'busy'});
+    active++;let released=false;
+    const release=()=>{if(!released){active--;released=true;}};
+    response.once('finish',release);response.once('close',release);
+  }
+  next();
+});
 app.use(express.json({ limit: '32kb' }));
 
 app.get('/api/health', (_request, response) => {
-  response.json({ ok: true, service: 'yojana-sahayak', corpus_documents: new Set(loadPassages().map(p => p.document_id)).size });
+  try {response.json({ok:true,service:'yojana-sahayak',corpus_documents:new Set(getPassages().map(p=>p.document_id)).size});}
+  catch{response.status(503).json({ok:false,reason_code:'corpus_unavailable'});}
+});
+
+app.get('/api/ready',async(_request,response)=>{
+  let count=0,model=false;
+  try {count=new Set(getPassages().map(p=>p.document_id)).size;}catch{}
+  try {
+    const url=new URL(process.env.OLLAMA_URL || 'http://127.0.0.1:11434/api/chat');url.pathname='/api/tags';url.search='';
+    const result=await fetchImpl(url,{signal:AbortSignal.timeout(2000)});
+    const data=await result.json();
+    model=result.ok && data.models?.some(item=>item.name===(process.env.OLLAMA_MODEL || 'qwen3:4b')) || false;
+  }catch{}
+  const ok=count>=10 && model;
+  response.status(ok?200:503).json({ok,corpus_documents:count,required_documents:10,model_available:model,extractive_fallback:count>0});
 });
 
 app.post('/api/chat', async (request, response) => {
@@ -66,7 +100,14 @@ app.use((request, response) => {
   }
   return response.sendFile(path.join(root, 'dist', 'index.html'));
 });
-
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Yojana Sahayak listening on port ${port}`);
+app.use((error,_request,response,_next)=>{
+  response.status(error.type==='entity.too.large'?413:400).json({status:'invalid_request',reason_code:'invalid_json_or_request'});
 });
+return app;
+}
+
+if(process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+  const host=process.env.HOST || '127.0.0.1',port=Number(process.env.PORT || 3000);
+  if(!['127.0.0.1','localhost','::1'].includes(host) && !process.env.API_ACCESS_TOKEN)throw Error('Set API_ACCESS_TOKEN before exposing the API beyond localhost');
+  createApp().listen(port,host,()=>console.log('Yojana Sahayak listening on '+host+':'+port));
+}
