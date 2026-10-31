@@ -22,8 +22,8 @@ function languagePrompt() {
 
 function rolePrompt(language, error = false) {
   const lead = error ? (language === 'hi' ? 'कृपया सूची में से एक विकल्प चुनें।\n' : 'Please choose one of the listed options.\n') : '';
-  if (language === 'hi') return `${lead}आपके लिए उपयोगी योजना जानकारी ढूँढने के लिए, अपना विकल्प चुनें:\n1 किसान\n2 विद्यार्थी\n3 कामगार\n4 कारीगर\n5 परिवार का सदस्य / अन्य नागरिक\n6 किसी व्यक्ति की मदद करने वाला स्वयंसेवक\n\nनीचे केवल विकल्प का नंबर भेजें।`;
-  return `${lead}Which best describes you? I’ll use this to find relevant scheme information.\n1 Farmer\n2 Student\n3 Worker\n4 Artisan or craft worker\n5 Family member / other citizen\n6 Volunteer helping someone\n\nReply with the number.`;
+  if (language === 'hi') return `${lead}आपके लिए उपयोगी योजना जानकारी ढूँढने के लिए, अपना विकल्प चुनें:\n1 किसान\n2 विद्यार्थी\n3 कामगार\n4 कारीगर\n5 किसी व्यक्ति की मदद करने वाला स्वयंसेवक\n\nनीचे केवल विकल्प का नंबर भेजें।`;
+  return `${lead}Which best describes you? I’ll use this to find relevant scheme information.\n1 Farmer\n2 Student\n3 Worker\n4 Artisan or craft worker\n5 Volunteer helping someone\n\nReply with the number.`;
 }
 
 function intro(language) {
@@ -77,8 +77,8 @@ function parseRole(text) {
   if (value === '2' || /विद्यार्थी|छात्र|छात्रा|student/u.test(value)) return 'student';
   if (value === '3' || /कामगार|मजदूर|worker/u.test(value)) return 'worker';
   if (value === '4' || /कारीगर|शिल्पकार|artisan|craft/u.test(value)) return 'artisan';
-  if (value === '5' || /परिवार|नागरिक|family|citizen|other/u.test(value)) return 'family';
-  if (value === '6' || /स्वयंसेवक|volunteer|help.?desk/u.test(value)) return 'volunteer';
+  if (/परिवार|नागरिक|family|citizen/u.test(value)) return 'family';
+  if (value === '5' || /स्वयंसेवक|volunteer|help.?desk/u.test(value)) return 'volunteer';
   return null;
 }
 

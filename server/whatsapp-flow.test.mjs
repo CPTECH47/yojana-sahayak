@@ -79,7 +79,7 @@ test('failed and skipped conditions are reported separately with a way to restar
 test('family questionnaire recommends PMUY only as a preliminary match with its sources', async () => {
   const { flow, calls } = conversation();
   await startAndChoose(flow);
-  await flow.handle('chat-a', '5');
+  await flow.handle('chat-a', 'family');
   await flow.handle('chat-a', 'yes');
   await flow.handle('chat-a', 'no');
   const result = await flow.handle('chat-a', 'yes');
@@ -151,7 +151,7 @@ test('CSC search accepts a town and can be cancelled',async()=>{
 test('completed scheme result offers centre help before asking for a PIN or town',async()=>{
   const {flow}=conversation();
   await startAndChoose(flow,'a','2');
-  await flow.handle('a','5');await flow.handle('a','yes');await flow.handle('a','no');
+  await flow.handle('a','family');await flow.handle('a','yes');await flow.handle('a','no');
   const result=await flow.handle('a','yes');
   assert.match(result,/Would you like help finding a nearby service centre/);
   assert.doesNotMatch(result,/6-digit PIN code/u);
@@ -159,7 +159,7 @@ test('completed scheme result offers centre help before asking for a PIN or town
   const maps=await flow.handle('a','263139');
   assert.match(maps,/google\.com\/maps\/search/);
   assert.match(maps,/not verified as CSCs/);
-  await startAndChoose(flow,'b','2');await flow.handle('b','5');await flow.handle('b','yes');await flow.handle('b','no');await flow.handle('b','yes');
+  await startAndChoose(flow,'b','2');await flow.handle('b','family');await flow.handle('b','yes');await flow.handle('b','no');await flow.handle('b','yes');
   assert.match(await flow.handle('b','NO'),/centre search skipped/i);
 });
 
@@ -224,4 +224,18 @@ test('bare replies are accepted during the questionnaire and optional CSC prompt
   assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', '263139'), true);
   await flow.handle('chat-a','SKIP');
   assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', 'what is PM-KISAN?'), false);
+});
+test('role menu has five choices in both languages and rejects option six', async () => {
+  for (const [lang, volunteer] of [['1', /स्वयंसेवक/u], ['2', /Volunteer/u]]) {
+    const { flow } = conversation();
+    const menu = await startAndChoose(flow, 'roles', lang);
+    assert.match(menu, volunteer);
+    assert.doesNotMatch(menu, /(?:^|\n)6\s/u);
+    assert.doesNotMatch(menu, /Family member \/ other citizen|परिवार का सदस्य \/ अन्य नागरिक/u);
+    const retry = await flow.handle('roles', '6');
+    assert.match(retry, volunteer);
+    assert.doesNotMatch(retry, /(?:^|\n)6\s/u);
+    const selected = await flow.handle('roles', '5');
+    assert.doesNotMatch(selected, /choose one of the listed options|सूची में से एक विकल्प/u);
+  }
 });
