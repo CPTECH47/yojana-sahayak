@@ -1,7 +1,7 @@
 import { loadPassages, schemeFromText } from './corpus.mjs';
 import { topicFor } from './verified-facts.mjs';
 import { memoryStore } from './local-store.mjs';
-import { extractProfileStatement, isProfileStatement } from './profile-extract.mjs';
+import { extractProfileStatement, interpretQuestionAnswer, isProfileStatement } from './profile-extract.mjs';
 
 function normalize(text) {
   return String(text ?? '').trim().normalize('NFC').toLocaleLowerCase().replace(/[.!?।,]/gu, '').trim();
@@ -153,7 +153,7 @@ function infoOnly(role, language, passages) {
 }
 
 // Language and profile answers are kept per direct chat in process memory and cleared on completion/restart.
-export function createWhatsAppConversation({ answers, passages, store = memoryStore(), now = Date.now, naturalFlow = process.env.YOJANA_NATURAL_FLOW !== '0', extractProfile = extractProfileStatement }) {
+export function createWhatsAppConversation({ answers, passages, store = memoryStore(), now = Date.now, naturalFlow = process.env.YOJANA_NATURAL_FLOW !== '0', extractProfile = extractProfileStatement, interpretAnswer = interpretQuestionAnswer }) {
   const languageByChat = new Map();
   const questionnaireByChat = new Map();
   const completedByChat = new Map();
@@ -169,6 +169,18 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   const moreHint = language => language==='hi'
     ? 'दूसरी योजना की शुरुआती जाँच के लिए *YOJANA MORE* भेजें।'
     : 'Send *YOJANA MORE* for another preliminary scheme check.';
+  function naturalAnalysis(state){
+    try {
+      const check=answers.recommend({profile:state.profile,language:state.language});
+      const item=check.results?.[0];
+      if(!item?.citations?.length)return '';
+      const known=questionSets[state.role].filter(q=>typeof state.profile[q.key]==='boolean').length;
+      const source=item.citations[0];
+      return state.language==='hi'
+        ? `आपकी पुष्टि की गई जानकारी से *${item.scheme_name}* की शुरुआती जाँच प्रासंगिक है। ${known}/${questionSets[state.role].length} शर्तों के जवाब मिल गए हैं; आय की राशि अकेले पात्रता तय नहीं करती।\nस्रोत: ${source.title}, ${source.locator} — ${source.url}\nअगला सवाल:`
+        : `Your confirmed details make *${item.scheme_name}* worth checking. You have answered ${known}/${questionSets[state.role].length} conditions; the income amount alone does not determine eligibility.\nSource: ${source.title}, ${source.locator} — ${source.url}\nNext question:`;
+    } catch {return '';}
+  }
   function saved(chatId) {
     const id=store.id(chatId), value=store.get('profiles',id);
     if(value?.expires_at<=now()){store.delete('profiles',id);return null;}
@@ -212,7 +224,9 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     questionnaireByChat.set(chatId,{phase:'natural_confirm',language,candidate});
     const roleLabel={farmer:['किसान','farmer'],worker:['कामगार','worker'],student:['विद्यार्थी','student'],artisan:['कारीगर','artisan'],family:['परिवार का सदस्य','family member']}[candidate.role];
     const amount=candidate.income_amount===null?'':language==='hi'?`, आपकी व्यक्तिगत आय ₹${candidate.income_amount}${candidate.income_period?' '+({day:'प्रतिदिन',week:'प्रति सप्ताह',month:'प्रति माह',year:'प्रति वर्ष'}[candidate.income_period]):' (समय स्पष्ट नहीं)'}`:`; your personal income ₹${candidate.income_amount}${candidate.income_period?' per '+candidate.income_period:' (period unclear)'}`;
-    return language==='hi'?`मैंने समझा: ${roleLabel[0]}${amount}।\n1 सही · 2 सुधारें · 3 रद्द करें\nसही वाक्य भी भेज सकते हैं।`:`I understood: ${roleLabel[1]}${amount}.\n1 Confirm · 2 Correct · 3 Cancel\nYou can also send a corrected sentence.`;
+    const factNames={owns_cultivable_land:['खेती योग्य जमीन है','own cultivable land'],income_tax_payer_last_year:['पिछले वर्ष आयकर दिया','paid income tax last year'],unorganised_worker:['असंगठित क्षेत्र में काम','unorganised-sector work'],age_18_to_40:['आयु 18–40 के बीच','age 18–40'],household_has_existing_lpg:['परिवार में LPG कनेक्शन','household LPG connection']};
+    const facts=Object.entries(candidate.facts||{}).map(([key,v])=>`${language==='hi'?(v?'हाँ: ':'नहीं: '):(v?'Yes: ':'No: ')}${factNames[key]?.[language==='hi'?0:1]||key}`).join('\n');
+    return language==='hi'?`मैंने आपकी बात से यह समझा: ${roleLabel[0]}${amount}।${facts?'\n'+facts:''}\nक्या ये सभी बातें सही हैं?\n1 सही · 2 सुधारें · 3 रद्द करें`:`From your message I understood: ${roleLabel[1]}${amount}.${facts?'\n'+facts:''}\nAre all these details correct?\n1 Confirm · 2 Correct · 3 Cancel`;
   }
 
   async function handle(chatId, text) {
@@ -298,6 +312,16 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       return languagePrompt(naturalFlow)+(saved(chatId)?'\nRESUME: saved profile / सहेजी गई जानकारी':'');
     }
 
+    if(naturalFlow && state?.phase==='answer_confirm'){
+      if(value==='3'||value==='cancel'){questionnaireByChat.delete(chatId);return language==='hi'?'जाँच रद्द की गई। *YOJANA START* से फिर शुरू करें।':'Check cancelled. Send *YOJANA START* to restart.';}
+      const active={...state,phase:'questions',proposed_answer:undefined};
+      questionnaireByChat.set(chatId,active);
+      if(value==='1')return handle(chatId,state.proposed_answer?'1':'2');
+      if(value==='2')return currentQuestion(active);
+      questionnaireByChat.set(chatId,state);
+      return language==='hi'?'इस जवाब को मानें? 1 हाँ · 2 सुधारें · 3 रद्द करें':'Use this answer? 1 Confirm · 2 Correct · 3 Cancel';
+    }
+
     if(naturalFlow && state?.phase==='natural_confirm'){
       if(value==='3'||value==='cancel'){questionnaireByChat.delete(chatId);return state.language==='hi'?'जाँच रद्द की गई। फिर शुरू करने के लिए *YOJANA START* भेजें।':'Check cancelled. Send *YOJANA START* to restart.';}
       if(value==='2') {questionnaireByChat.set(chatId,{phase:'role',language:state.language,profile:{}});return state.language==='hi'?'सही विवरण लिखें, या नीचे अपनी भूमिका चुनें।\n'+rolePrompt(state.language):'Send a corrected sentence, or choose your role below.\n'+rolePrompt(state.language);}
@@ -309,12 +333,16 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       if(current?.phase!=='questions')return nextMessage;
       current.profile.income_amount=state.candidate.income_amount;
       current.profile.income_period=state.candidate.income_period;
+      const allowed=new Set(questionSets[current.role].map(q=>q.key));
+      for(const [key,answer] of Object.entries(state.candidate.facts||{}))if(allowed.has(key) && typeof answer==='boolean')current.profile[key]=answer;
       if(state.candidate.income_amount!==null && !state.candidate.income_period){
         current.phase='income_period';questionnaireByChat.set(chatId,current);
         return state.language==='hi'?'₹'+state.candidate.income_amount+' कितने समय की आय है?\n1 प्रतिदिन · 2 प्रति सप्ताह · 3 प्रति माह · 4 प्रति वर्ष · 5 पता नहीं · 6 वापस · 7 रद्द करें':'₹'+state.candidate.income_amount+' is income for which period?\n1 Day · 2 Week · 3 Month · 4 Year · 5 Unsure · 6 Back · 7 Cancel';
       }
       if(current.role==='worker' && state.candidate.income_period==='month')current.profile.monthly_income_at_most_15000=state.candidate.income_amount<=15000;
-      return currentQuestion(current);
+      const firstUnknown=questionSets[current.role].findIndex(q=>typeof current.profile[q.key]!=='boolean');
+      if(firstUnknown>=0)current.index=firstUnknown;
+      return [naturalAnalysis(current),currentQuestion(current)].filter(Boolean).join('\n');
     }
     if(naturalFlow && state?.phase==='income_period'){
       if(value==='7'||value==='cancel'){questionnaireByChat.delete(chatId);return state.language==='hi'?'जाँच रद्द की गई। *YOJANA START* भेजकर फिर शुरू करें।':'Check cancelled. Send *YOJANA START* to restart.';}
@@ -327,8 +355,10 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       if(period===undefined)return state.language==='hi'?'आय का समय 1–5 से बताएँ या *YOJANA START* से फिर शुरू करें।':'Choose income period 1–5, or send *YOJANA START* to restart.';
       state.profile.income_period=period;state.phase='questions';
       if(state.role==='worker' && period==='month')state.profile.monthly_income_at_most_15000=state.profile.income_amount<=15000;
+      const firstUnknown=questionSets[state.role].findIndex(q=>typeof state.profile[q.key]!=='boolean');
+      if(firstUnknown>=0)state.index=firstUnknown;
       questionnaireByChat.set(chatId,state);
-      return currentQuestion(state);
+      return [naturalAnalysis(state),currentQuestion(state)].filter(Boolean).join('\n');
     }
     if(naturalFlow && (state?.phase==='language'||state?.phase==='role') && isProfileStatement(text)){
       return await handleProfileStatement(chatId,text);
@@ -423,8 +453,15 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       }
       const numericChoice = { '1': true, '2': false, '4': null };
       const answer = Object.hasOwn(numericChoice, value) ? numericChoice[value] : parseYesNo(text);
-      if (answer === undefined) return currentQuestion(state, true);
       const step = questionSets[state.role][state.index];
+      if (answer === undefined) {
+        const proposed=naturalFlow?await interpretAnswer(text,step.key):null;
+        if(typeof proposed==='boolean'){
+          questionnaireByChat.set(chatId,{...state,phase:'answer_confirm',proposed_answer:proposed});
+          return state.language==='hi'?`आपकी बात से इस सवाल का जवाब ${proposed?'हाँ':'नहीं'} समझा।\n1 पुष्टि · 2 सुधारें · 3 रद्द करें`:`I understood ${proposed?'YES':'NO'} for this question.\n1 Confirm · 2 Correct · 3 Cancel`;
+        }
+        return currentQuestion(state, true);
+      }
       const profile = { ...state.profile, [step.key]: answer };
       let nextIndex = state.index + 1;
       while(nextIndex < questionSets[state.role].length && typeof profile[questionSets[state.role][nextIndex].key]==='boolean')nextIndex++;
@@ -465,8 +502,8 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     if (phase === 'language') return ['1', '2'].includes(normalize(text)) || (naturalFlow && isProfileStatement(text));
     if (naturalFlow && phase === 'natural_confirm') return String(text ?? '').trim().length>0;
     if (naturalFlow && phase === 'income_period') return String(text ?? '').trim().length>0;
-    return ['role','questions','natural_confirm','income_period'].includes(phase) && Boolean(String(text ?? '').trim());
+    return ['role','questions','natural_confirm','income_period','answer_confirm'].includes(phase) && Boolean(String(text ?? '').trim());
   }
 
-  return { handle, handleProfileStatement, isProfileStatement: text=>naturalFlow && isProfileStatement(text), answerQuestion, acceptsBareQuestionnaireReply, choosingLanguage: chatId => questionnaireByChat.get(chatId)?.phase === 'language', selectedLanguage: chatId => ['role','questions','natural_confirm','income_period'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
+  return { handle, handleProfileStatement, isProfileStatement: text=>naturalFlow && isProfileStatement(text), answerQuestion, acceptsBareQuestionnaireReply, choosingLanguage: chatId => questionnaireByChat.get(chatId)?.phase === 'language', selectedLanguage: chatId => ['role','questions','natural_confirm','income_period','answer_confirm'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
 }

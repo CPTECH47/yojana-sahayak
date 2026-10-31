@@ -63,8 +63,8 @@ export function createVoiceFlow({ answers, transcribe, fallback, answerQuestion=
         try {
           if(state.languageMenu && !choosingLanguage(id)) return 'The menu changed. Please send YOJANA START and choose again.\nमेनू बदल गया है। कृपया फिर से शुरू करें।';
           const choice=spokenChoice(state.text);
-          if (isQuestionnaireReply(id, choice) && /^(?:[1-7]|yes|no|हाँ|हां|नहीं|नही|जी|ना|skip)$/iu.test(choice)) return await fallback(id,choice);
           if(profileStatement && isProfileStatement(state.text)) return await profileStatement(id,state.text,state.language);
+          if(isQuestionnaireReply(id,choice)) return await fallback(id,/^[1-7]$/u.test(choice)?choice:state.text);
           if(answerQuestion)return await answerQuestion(id,state.text,state.language);
           const result=await answers.chat({question:state.text,language:state.language});
           const label=state.language==='hi'?'स्रोत':'Source';
