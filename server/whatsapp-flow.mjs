@@ -120,8 +120,8 @@ function formatRecommendation(result, language) {
     ? 'यह शुरुआती जाँच है, सरकारी निर्णय नहीं। पूरी शर्तें आधिकारिक पोर्टल या स्थानीय कार्यालय से जाँचें।'
     : 'Preliminary check only, not an official decision. Verify the full rules with the official portal or local office.';
   const csc = language === 'hi'
-    ? 'नज़दीकी सेवा केंद्र खोजने के लिए YOJANA CSC भेजें। आधिकारिक CSC सूची: https://locator.csccloud.in/ (वहाँ अपना क्षेत्र चुनें)।'
-    : 'To search for nearby service centres, send YOJANA CSC. Official CSC locator: https://locator.csccloud.in/ (select your area there).';
+    ? 'नज़दीकी सेवा केंद्र खोजने के लिए 6 अंकों का PIN कोड या शहर का नाम भेजें। नहीं चाहिए तो SKIP भेजें। आधिकारिक CSC सूची: https://locator.csccloud.in/ (वहाँ अपना क्षेत्र चुनें)।'
+    : 'To search for nearby service centres, reply with a 6-digit PIN code or town name. Send SKIP if you do not need this. Official CSC locator: https://locator.csccloud.in/ (select your area there).';
   const next = item.status === 'not_matched'
     ? (language === 'hi' ? '• अगला कदम: यदि कोई जवाब गलत था, YOJANA START भेजकर सही जानकारी के साथ फिर जाँचें। नियमों और अन्य योजनाओं के लिए आधिकारिक कार्यालय से पूछें।' : '• Next: If an answer was wrong, send YOJANA START and check again with correct details. Ask the official office about the rules and other schemes.')
     : (language === 'hi' ? '• अगला कदम: छूटे हुए जवाब देने या सुधारने के लिए YOJANA START भेजें। आवेदन से पहले आधिकारिक नियम जाँचें।' : '• Next: Send YOJANA START to supply or correct answers. Check the official rules before applying.');
@@ -199,7 +199,8 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       return language==='hi' ? 'CSC खोजने के लिए 6 अंकों का PIN कोड या शहर का नाम भेजें। रद्द करने के लिए CANCEL भेजें।' : 'Send a 6-digit PIN code or town name to search for a CSC. Send CANCEL to stop.';
     }
     if (awaitingCsc.get(chatId) && awaitingCsc.get(chatId) > now()) {
-      if (value === 'cancel' || value === 'start') { awaitingCsc.delete(chatId); if(value==='cancel') return language==='hi'?'केंद्र की खोज रद्द की गई।':'Centre search cancelled.'; }
+      if (value === 'cancel' || value === 'skip' || value === 'start') { awaitingCsc.delete(chatId); if(value!=='start') return language==='hi'?'केंद्र की खोज छोड़ दी गई। सवाल पूछने के लिए YOJANA के बाद अपना सवाल भेजें।':'Centre search skipped. Send YOJANA followed by your question whenever you need help.'; }
+      else if (/^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next)$/iu.test(value) || /[?？]/u.test(text)) awaitingCsc.delete(chatId);
       else {
         const area=String(text).trim();
         if (!/^[\p{L}\p{M}\p{N} .,'-]{2,60}$/u.test(area) || (/^\d+$/.test(area) && !/^[1-9]\d{5}$/.test(area))) return language==='hi'?'कृपया सही 6 अंकों का PIN कोड या शहर का नाम भेजें।':'Please send a valid 6-digit PIN code or a town name.';
@@ -240,7 +241,9 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       languageByChat.set(chatId,old.language);completedByChat.set(chatId,old.profiles || {[old.profile.scheme_id]:old.profile});
       const role=old.profile.scheme_id==='pm-kisan'?'farmer':old.profile.scheme_id==='pmuy'?'family':'worker';
       questionnaireByChat.set(chatId,{phase:'complete',language:old.language,role,profile:old.profile,index:0});
-      return formatRecommendation(answers.recommend({profile:old.profile,language:old.language}),old.language)+'\n'+resultControls(old.language);
+      const result=answers.recommend({profile:old.profile,language:old.language});
+      if(result.results?.length)awaitingCsc.set(chatId,now()+300000);
+      return formatRecommendation(result,old.language)+'\n'+resultControls(old.language);
     }
 
     if (isStart(text)) {
@@ -338,6 +341,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       remember(chatId,completed);
       try {
         const result = answers.recommend({ profile, language: state.language });
+        if(result.results?.length)awaitingCsc.set(chatId,now()+300000);
         return `${formatRecommendation(result, state.language)}\n\n${resultControls(state.language)}`;
       } catch {
         return state.language === 'hi' ? 'सुझाव सेवा अभी उपलब्ध नहीं है। बाद में फिर कोशिश करें।' : 'The recommendation service is unavailable. Please try again later.';

@@ -92,3 +92,8 @@
 
 - `server/whatsapp-flow.mjs` adds `YOJANA CSC`, then accepts a six-digit PIN or town in the active direct chat, validates and encodes it into a Google Maps search link, and provides the official CSC locator with a notice that map listings are unverified. The input is not added to the saved profile; the pending prompt expires after five minutes. `server/whatsapp-flow.test.mjs` checks invalid PINs, Unicode town encoding, cancellation and preservation of the existing questionnaire.
 - `npm.cmd test`: 50/50 passed. `npm.cmd run build`: passed. `git diff --check`: passed. Phone and actual Maps result quality remain unverified. No API fields changed.
+
+## Automatic CSC prompt after result — 31 October
+
+- `server/whatsapp-flow.mjs` now asks for a PIN or town in each available final recommendation and when reopening a saved result. A five-minute pending prompt accepts the next direct reply; SKIP/CANCEL ends it, and START or other supported controls continue normally. The Maps search remains an unverified listing search and does not store the entered location in the profile.
+- `server/whatsapp-flow.test.mjs` verifies the complete PMUY fictional flow, bare PIN response, generated map link and SKIP. `npm.cmd test`: 51/51 passed; `npm.cmd run build` and `git diff --check` passed. Real paired-phone test of this new sequence remains pending. No API contract changed.

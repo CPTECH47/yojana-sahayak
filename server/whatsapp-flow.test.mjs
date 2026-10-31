@@ -88,7 +88,7 @@ test('family questionnaire recommends PMUY only as a preliminary match with its 
   assert.match(result, /संभावित मेल/u);
   assert.match(result, /pmuy.gov.in\/ujjwala2.html/u);
   assert.match(result, /आवश्यक दस्तावेज़/u);
-  assert.match(result, /YOJANA CSC/u);
+  assert.match(result, /PIN कोड/u);
   assert.match(result, /locator\.csccloud\.in/u);
   assert.equal(calls.at(-1).profile.scheme_id, 'pmuy');
   assert.equal(calls.at(-1).profile.household_has_existing_lpg, false);
@@ -147,7 +147,21 @@ test('CSC search accepts a town and can be cancelled',async()=>{
   await flow.handle('a','CSC');
   const result=await flow.handle('a','हल्द्वानी');
   assert.equal(new URL(result.match(/https:\/\/www\.google\.com\/maps\/search\/\?\S+/u)[0]).searchParams.get('query'),'Common Service Centre हल्द्वानी India');
-  await flow.handle('a','CSC');assert.match(await flow.handle('a','CANCEL'),/रद्द/u);
+  await flow.handle('a','CSC');assert.match(await flow.handle('a','CANCEL'),/छोड़/u);
+});
+
+test('completed scheme result immediately asks for a location and accepts a bare PIN or skip',async()=>{
+  const {flow}=conversation();
+  await startAndChoose(flow,'a','2');
+  await flow.handle('a','5');await flow.handle('a','yes');await flow.handle('a','no');
+  const result=await flow.handle('a','yes');
+  assert.match(result,/reply with a 6-digit PIN code or town name/);
+  assert.equal(flow.acceptsBareQuestionnaireReply('a','263139'),true);
+  const maps=await flow.handle('a','263139');
+  assert.match(maps,/google\.com\/maps\/search/);
+  assert.match(maps,/not verified as CSCs/);
+  await startAndChoose(flow,'b','2');await flow.handle('b','5');await flow.handle('b','yes');await flow.handle('b','no');await flow.handle('b','yes');
+  assert.match(await flow.handle('b','SKIP'),/Centre search skipped/);
 });
 
 test('worker questionnaire checks only sourced PM-SYM conditions, including income band', async () => {
@@ -195,7 +209,7 @@ test('each direct chat has its own language and profile state', async () => {
   assert.deepEqual(calls.at(-1), { question: 'PMUY eligibility', language: 'hi' });
 });
 
-test('bare replies are accepted only while a chat is actively inside the questionnaire', async () => {
+test('bare replies are accepted during the questionnaire and optional CSC prompt', async () => {
   const { flow } = conversation();
   assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', '1'), false);
   await flow.handle('chat-a', 'START');
@@ -208,5 +222,7 @@ test('bare replies are accepted only while a chat is actively inside the questio
   await flow.handle('chat-a', 'NO');
   await flow.handle('chat-a', 'NO');
   await flow.handle('chat-a', 'NO');
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', '263139'), true);
+  await flow.handle('chat-a','SKIP');
   assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', 'what is PM-KISAN?'), false);
 });
