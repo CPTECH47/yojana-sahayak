@@ -118,7 +118,7 @@ async function start() {
           const key=store.id(jid+':'+id);pendingVoice.set(key,bytes);text='__VOICE_AUDIO__:'+key;
         } catch {console.log('Voice status: audio download failed');await socket.sendMessage(jid,{text:'Voice download failed. Please try again or send a text question.'});continue;}
       } else {
-        if (command === null && !conversation.acceptsBareQuestionnaireReply(jid, rawText)) continue;
+        if (command === null && !conversation.acceptsBareQuestionnaireReply(jid, rawText) && !voice.acceptsPendingChoice(jid, rawText)) continue;
         text = command ?? rawText.trim();
       }
       if(text.length>1000)continue;

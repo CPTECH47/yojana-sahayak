@@ -13,7 +13,7 @@ test('voice requires opt-in and confirmation before a cited answer', async()=>{
   assert.equal(flow.acceptsAudio('a'),false);
   assert.match(await flow.handle('a','voice'),/Send one short/);
   assert.equal(flow.acceptsAudio('a'),true);
-  assert.match(await flow.handleAudio('a',Buffer.from('fictional')),/YOJANA CONFIRM/);
+  assert.match(await flow.handleAudio('a',Buffer.from('fictional')),/\*1\* भेजें/);
   assert.equal(calls,0);
   const response=await flow.handle('a','confirm');
   assert.equal(calls,1);assert.match(response,/Official source/);assert.match(response,/जाँची गई जानकारी/);
@@ -35,7 +35,7 @@ test('voice notes in an active conversation work without the voice command and r
   let submitted=0;
   const flow=createVoiceFlow({fallback:async()=>{submitted++;return 'next question'},isQuestionnaireReply:()=>true,transcribe:async()=>({text:'हाँ',language:'hi'}),answers:{}});
   assert.equal(await flow.handleAudio('personal-chat',Buffer.from('fake')),null);
-  assert.match(await flow.handleAudio('active-chat',Buffer.from('fake'),true),/YOJANA CONFIRM/);
+  assert.match(await flow.handleAudio('active-chat',Buffer.from('fake'),true),/\*1\* भेजें/);
   assert.equal(submitted,0);
   assert.equal(await flow.handle('active-chat','confirm'),'next question');
   assert.equal(submitted,1);
@@ -44,7 +44,7 @@ test('voice notes in an active conversation work without the voice command and r
 test('spoken number choices are applied only after confirmation to an active questionnaire',async()=>{
   const applied=[];
   const flow=createVoiceFlow({fallback:async(_id,text)=>{applied.push(text);return 'next'},isQuestionnaireReply:()=>true,transcribe:async()=>({text:'एक।',language:'hi'}),answers:{}});
-  assert.match(await flow.handleAudio('chat',Buffer.from('fake'),true),/YOJANA CONFIRM/);
+  assert.match(await flow.handleAudio('chat',Buffer.from('fake'),true),/\*1\* भेजें/);
   assert.deepEqual(applied,[]);
   assert.equal(await flow.handle('chat','confirm'),'next');
   assert.deepEqual(applied,['1']);
@@ -99,4 +99,24 @@ test('unrecognised language choice falls back to typing without guessing',async(
 test('speech worker failure at language menu offers the typed choices',async()=>{
   const flow=createVoiceFlow({answers:{},fallback:async()=>'',choosingLanguage:()=>true,transcribe:async()=>{throw Error('voice worker inference failed')}});
   assert.match(await flow.handleAudio('a',Buffer.from('fake'),true),/type 1 for Hindi or 2 for English/);
+});
+
+test('a pending transcript can be corrected and confirmed with one keypress',async()=>{
+  const submitted=[];
+  const flow=createVoiceFlow({answers:{chat:async input=>{submitted.push(input);return {answer_text:'Cited reply',citations:[]};}},fallback:async()=>'',transcribe:async()=>({text:'PMG sound scheme',language:'en'})});
+  await flow.handleAudio('chat',Buffer.from('fake'),true);
+  assert.equal(flow.acceptsPendingChoice('chat','1'),true);
+  assert.match(await flow.handle('chat','edit पीएम किसान में कितना मिलता है?'),/Corrected transcript/);
+  assert.deepEqual(submitted,[]);
+  assert.match(await flow.handle('chat','1'),/Cited reply/);
+  assert.deepEqual(submitted,[{question:'पीएम किसान में कितना मिलता है?',language:'hi'}]);
+  assert.equal(flow.acceptsPendingChoice('chat','1'),false);
+});
+
+test('two cancels a pending transcript without using it',async()=>{
+  let calls=0;
+  const flow=createVoiceFlow({answers:{chat:async()=>{calls++;}},fallback:async()=>'',transcribe:async()=>({text:'question',language:'en'})});
+  await flow.handleAudio('chat',Buffer.from('fake'),true);
+  assert.match(await flow.handle('chat','2'),/cancelled/);
+  assert.equal(calls,0);
 });

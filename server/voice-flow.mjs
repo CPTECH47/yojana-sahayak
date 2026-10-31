@@ -12,6 +12,7 @@ export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaire
   const prompt=`Send one short Hindi or English voice question. Confirm the transcription before I answer. ${processing} Do not send Aadhaar, bank details or other private information.\nहिंदी या अंग्रेज़ी में छोटा आवाज़ वाला सवाल भेजें। जवाब से पहले लिखी हुई बात की पुष्टि करें। आधार या बैंक जानकारी न भेजें।`;
   return {
     acceptsAudio(id){return current(id)?.phase==='audio';},
+    acceptsPendingChoice(id,text){return current(id)?.phase==='confirm' && /^(?:1|2)$/u.test(String(text).trim());},
     async handleAudio(id, audio, activeConversation=false){
       if(!activeConversation && !this.acceptsAudio(id))return null;
       states.delete(id);
@@ -29,11 +30,11 @@ export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaire
         diagnostic('transcription ready for confirmation');
         states.set(id,{phase:'confirm',...result,languageMenu,expires:now()+300000});
         if(languageMenu) return spokenChoice(result.text)==='1'
-          ? `I heard: ${result.text}\nOption 1 selects *Hindi / हिंदी*. Send YOJANA CONFIRM to continue in Hindi, or YOJANA CANCEL to choose again.\nविकल्प 1 से हिंदी चुनी जाएगी।`
-          : `I heard: ${result.text}\nOption 2 selects *English / अंग्रेज़ी*. Send YOJANA CONFIRM to continue in English, or YOJANA CANCEL to choose again.\nविकल्प 2 से अंग्रेज़ी चुनी जाएगी।`;
+          ? `I heard: ${result.text}\nOption 1 selects *Hindi / हिंदी*. Reply *1* to confirm or *2* to record again. To fix the words, send YOJANA EDIT followed by the correction.\nविकल्प 1 से हिंदी चुनी जाएगी।`
+          : `I heard: ${result.text}\nOption 2 selects *English / अंग्रेज़ी*. Reply *1* to confirm or *2* to record again. To fix the words, send YOJANA EDIT followed by the correction.\nविकल्प 2 से अंग्रेज़ी चुनी जाएगी।`;
         return result.language==='hi'
-          ? `मैंने सुना (हिंदी): ${result.text}\nशब्द और भाषा सही हों तो YOJANA CONFIRM भेजें। गलत हो तो YOJANA CANCEL भेजें और फिर से रिकॉर्ड करें।`
-          : `I heard (English): ${result.text}\nSend YOJANA CONFIRM if the words and language are correct. Otherwise send YOJANA CANCEL and record again.`;
+          ? `मैंने सुना (हिंदी): ${result.text}\nसही है तो *1* भेजें। दोबारा रिकॉर्ड करने के लिए *2* भेजें। शब्द ठीक करने के लिए YOJANA EDIT और सही वाक्य लिखें।`
+          : `I heard (English): ${result.text}\nReply *1* to confirm or *2* to record again. To correct words, send YOJANA EDIT followed by the correct sentence.`;
       } catch (error) {
         const safe=['empty or invalid transcript','unsupported detected language','low language confidence','invalid worker response','Voice transcription unavailable','Voice transcription timed out','voice worker input failed','voice worker model failed','voice worker decode failed','voice worker inference failed','Sarvam API key unavailable','Sarvam transcription unavailable','Invalid Sarvam response'];
         diagnostic('transcription failed: '+(safe.includes(error?.message)?error.message:'worker error'));
@@ -46,8 +47,17 @@ export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaire
     async handle(id,text){
       const command=String(text).trim().toLowerCase(); const state=current(id);
       if(command==='voice'){states.set(id,{phase:'audio',expires:now()+300000});return prompt;}
-      if(state && command==='cancel'){states.delete(id);return 'Voice question cancelled / आवाज़ वाला सवाल रद्द किया गया।';}
-      if(state?.phase==='confirm' && command==='confirm'){
+      if(state?.phase==='confirm' && command.startsWith('edit ')){
+        const corrected=String(text).trim().slice(5).trim();
+        if(!corrected || corrected.length>1000) return 'Please send YOJANA EDIT followed by the correct sentence. / सही वाक्य लिखें।';
+        if(state.languageMenu && !['1','2'].includes(spokenChoice(corrected))) return 'Please correct the language option to 1 or 2. / भाषा के लिए 1 या 2 लिखें।';
+        state.text=corrected;
+        if(!state.languageMenu) state.language=selectedLanguage(id) || (/\p{Script=Devanagari}/u.test(corrected)?'hi':'en');
+        state.expires=now()+300000;
+        return `Corrected transcript: ${corrected}\nReply *1* to confirm or *2* to record again. / सही हो तो *1*, दोबारा रिकॉर्ड करने के लिए *2* भेजें।`;
+      }
+      if(state && (command==='cancel' || (state.phase==='confirm' && command==='2'))){states.delete(id);return 'Voice question cancelled. Record again or type your question. / आवाज़ वाला सवाल रद्द हुआ। दोबारा रिकॉर्ड करें या लिखें।';}
+      if(state?.phase==='confirm' && ['confirm','1'].includes(command)){
         states.delete(id);
         try {
           if(state.languageMenu && !choosingLanguage(id)) return 'The menu changed. Please send YOJANA START and choose again.\nमेनू बदल गया है। कृपया फिर से शुरू करें।';
