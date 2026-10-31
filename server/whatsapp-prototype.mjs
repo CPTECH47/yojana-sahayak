@@ -107,8 +107,9 @@ async function start() {
       let text;
       if(audio && (voice.acceptsAudio(jid) || conversation.hasActiveConversation(jid))){
         const length=Number(audio.fileLength), seconds=Number(audio.seconds);
-        if(!Number.isFinite(length) || length<1 || length>10*1024*1024 || !Number.isFinite(seconds) || seconds>60){
-          await socket.sendMessage(jid,{text:'Please send a voice question shorter than one minute.'}); continue;
+          const maxSeconds=process.env.YOJANA_STT_PROVIDER==='sarvam'?30:60;
+          if(!Number.isFinite(length) || length<1 || length>10*1024*1024 || !Number.isFinite(seconds) || seconds>maxSeconds){
+            await socket.sendMessage(jid,{text:`Please send a voice question shorter than ${maxSeconds} seconds.`}); continue;
         }
         try {
           const bytes=await downloadMediaMessage(message,'buffer',{}, {logger:pino({level:'silent'}),reuploadRequest:socket.updateMediaMessage});

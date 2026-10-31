@@ -6,7 +6,10 @@ function spokenChoice(text) {
 export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaireReply=()=>false, selectedLanguage=()=>null, choosingLanguage=()=>false, now=Date.now, diagnostic=()=>{} }) {
   const states=new Map();
   const current=id=>{const s=states.get(id);if(s && s.expires<now()){states.delete(id);return null;}return s;};
-  const prompt='Send one short Hindi or English voice question. Confirm the transcription before I answer. Voice is processed locally. Do not send Aadhaar, bank details or other private information.\nहिंदी या अंग्रेज़ी में छोटा आवाज़ वाला सवाल भेजें। जवाब से पहले लिखी हुई बात की पुष्टि करें। आधार या बैंक जानकारी न भेजें।';
+  const processing=process.env.YOJANA_STT_PROVIDER==='sarvam'
+    ? 'Audio will be sent to Sarvam for transcription. / आवाज़ पहचान के लिए Sarvam को भेजी जाएगी।'
+    : 'Voice is processed locally. / आवाज़ इस कंप्यूटर पर संसाधित होगी।';
+  const prompt=`Send one short Hindi or English voice question. Confirm the transcription before I answer. ${processing} Do not send Aadhaar, bank details or other private information.\nहिंदी या अंग्रेज़ी में छोटा आवाज़ वाला सवाल भेजें। जवाब से पहले लिखी हुई बात की पुष्टि करें। आधार या बैंक जानकारी न भेजें।`;
   return {
     acceptsAudio(id){return current(id)?.phase==='audio';},
     async handleAudio(id, audio, activeConversation=false){
@@ -32,8 +35,10 @@ export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaire
           ? `मैंने सुना (हिंदी): ${result.text}\nशब्द और भाषा सही हों तो YOJANA CONFIRM भेजें। गलत हो तो YOJANA CANCEL भेजें और फिर से रिकॉर्ड करें।`
           : `I heard (English): ${result.text}\nSend YOJANA CONFIRM if the words and language are correct. Otherwise send YOJANA CANCEL and record again.`;
       } catch (error) {
-        const safe=['empty or invalid transcript','unsupported detected language','low language confidence','invalid worker response','Voice transcription unavailable','Voice transcription timed out','voice worker input failed','voice worker model failed','voice worker decode failed','voice worker inference failed'];
+        const safe=['empty or invalid transcript','unsupported detected language','low language confidence','invalid worker response','Voice transcription unavailable','Voice transcription timed out','voice worker input failed','voice worker model failed','voice worker decode failed','voice worker inference failed','Sarvam API key unavailable','Sarvam transcription unavailable','Invalid Sarvam response'];
         diagnostic('transcription failed: '+(safe.includes(error?.message)?error.message:'worker error'));
+        if(process.env.YOJANA_STT_PROVIDER==='sarvam' && (error?.message?.startsWith('Sarvam transcription HTTP ') || ['Sarvam API key unavailable','Sarvam transcription unavailable','Invalid Sarvam response'].includes(error?.message)))
+          return 'Speech service is unavailable right now. Please type your answer or question.\nआवाज़ सेवा अभी उपलब्ध नहीं है। कृपया जवाब या सवाल लिखकर भेजें।';
         if(languageMenu)return 'Could not reliably hear the language choice. Please type 1 for Hindi or 2 for English.\nभाषा का विकल्प स्पष्ट नहीं हुआ। हिंदी के लिए 1 या अंग्रेज़ी के लिए 2 लिखें।';
         return 'Voice could not be transcribed reliably. Please record again or type your question.\nआवाज़ स्पष्ट नहीं समझी गई। दोबारा रिकॉर्ड करें या सवाल लिखकर भेजें।';
       }

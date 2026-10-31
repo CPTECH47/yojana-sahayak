@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { transcribeSarvam } from './sarvam-voice.mjs';
 
 const script = fileURLToPath(new URL('../scripts/transcribe_voice.py', import.meta.url));
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -9,6 +10,7 @@ const localPython = join(root, '.runtime', 'voice-venv', process.platform === 'w
 
 // Audio is piped to the local worker rather than written to the repository.
 export function transcribeVoice(audio, { python = process.env.YOJANA_VOICE_PYTHON || (existsSync(localPython) ? localPython : 'python'), timeoutMs = 120000, language } = {}) {
+  if (process.env.YOJANA_STT_PROVIDER === 'sarvam') return transcribeSarvam(audio, { language });
   if (!Buffer.isBuffer(audio) || !audio.length || audio.length > 10 * 1024 * 1024) return Promise.reject(new Error('Invalid audio'));
   return new Promise((resolve, reject) => {
     const env={...process.env};
