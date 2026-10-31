@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urljoin, urlparse, urlunparse
 from bs4 import BeautifulSoup
-from ingest_sources import ROOT, extract, fetch, read, write
+from ingest_sources import ROOT, HOSTS, extract, fetch, read, write
 
 OUT = ROOT / ".runtime/source-discovery"
 INDEX = OUT / "candidates.json"
@@ -33,6 +33,18 @@ def official(url: str) -> bool:
             "www.pib.gov.in", "pib.gov.in", "pmuy.gov.in", "www.pmuy.gov.in",
             "pmkisan.gov.in", "www.pmkisan.gov.in",
         } and not p.username and not p.password and p.port in (None, 443)
+    except ValueError:
+        return False
+
+def approved_official(url: str) -> bool:
+    """Known approved URLs use the importer's exact host policy.
+
+    Discovery links retain the narrower programme-host policy above.
+    """
+    try:
+        p = urlparse(url)
+        return (p.scheme == "https" and p.hostname in HOSTS
+                and not p.username and not p.password and p.port in (None, 443))
     except ValueError:
         return False
 
@@ -101,11 +113,12 @@ def scan(*, fetcher=fetch, now=None, seeds=SEEDS, manifest=None, maximum_new=12)
     semantic_hashes = dict(previous.get("semantic_hashes", {}))
     added = 0
     for url, link_title, known in queue:
-        if not official(url):
+        allowed = approved_official if known else official
+        if not allowed(url):
             continue
         try:
             content, final_url = fetcher(url)
-            if not official(final_url):
+            if not allowed(final_url):
                 raise ValueError("Redirected outside trusted hosts")
             checked += 1
             sha = hashlib.sha256(content).hexdigest()

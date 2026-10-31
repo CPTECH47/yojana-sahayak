@@ -11,7 +11,7 @@ test('public catalogue contains no facts when no reviewed evidence is available 
     const root=`http://127.0.0.1:${server.address().port}`;
     const response=await fetch(root+'/api/catalog');assert.equal(response.status,200);
     assert.equal(response.headers.get('cache-control'),'no-store');
-    const data=await response.json();assert.equal(data.schemes.length,5);assert.deepEqual(data.records,[]);
+    const data=await response.json();assert.equal(data.schemes.length,6);assert.deepEqual(data.records,[]);
     assert.equal((await fetch(root+'/api/health')).status,401);
     assert.equal((await fetch(root+'/assets/does-not-exist.js')).status,404);
     const redirect=await fetch(root+'/start-whatsapp',{redirect:'manual'});

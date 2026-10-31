@@ -24,7 +24,7 @@ const authDir = process.env.YOJANA_AUTH_DIR ? resolve(process.env.YOJANA_AUTH_DI
 const authLock = openLocalStore(join(authDir,'.owner'));
 const store = openLocalStore(resolve(process.env.YOJANA_STATE_DIR || '.runtime/whatsapp'));
 const answers = createAnswerService();
-const conversation = createWhatsAppConversation({ answers, store });
+const conversation = createWhatsAppConversation({ answers, store, multiScheme: process.env.YOJANA_NATURAL_FLOW !== '0' && process.env.YOJANA_MULTI_SCHEME !== '0' });
 const voice = createVoiceFlow({ answers, transcribe:transcribeVoice, fallback:conversation.handle, answerQuestion:conversation.answerQuestion, profileStatement:conversation.handleProfileStatement, isProfileStatement:conversation.isProfileStatement, isQuestionnaireReply:conversation.acceptsBareQuestionnaireReply, selectedLanguage:conversation.selectedLanguage, choosingLanguage:conversation.choosingLanguage, diagnostic:event=>console.log('Voice status: '+event) });
 const pendingVoice = new Map();
 let currentSocket, reconnectTimer, stopped=false, attempts=0;

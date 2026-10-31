@@ -15,6 +15,7 @@ const bilingualTerms = Object.freeze({
 
 export const schemes = Object.freeze({
   'pm-kisan': { name: 'PM-KISAN', aliases: [/pm[\s-]?kisan/i, /पीएम[\s-]?किसान/u, /प्रधानमंत्री किसान/u] },
+  'pm-kmy': { name: 'Pradhan Mantri Kisan Maandhan (PM-KMY)', aliases: [/\bpm[\s-]?kmy\b/i, /kisan\s+maan.?dhan/i, /किसान मानधन/u] },
   nmmss: { name: 'National Means-cum-Merit Scholarship Scheme', aliases: [/\bnmmss?\b/i, /national means.{0,12}merit/i, /नेशनल मीन्स/u] },
   pmuy: { name: 'Pradhan Mantri Ujjwala Yojana', aliases: [/\bpmuy\b/i, /ujjwala/i, /उज्ज्वला/u] },
   'pm-vishwakarma': { name: 'PM Vishwakarma', aliases: [/pm[\s-]?vishwakarma/i, /विश्वकर्मा/u] },
@@ -22,6 +23,8 @@ export const schemes = Object.freeze({
 });
 
 export function schemeFromText(text) {
+  // The more specific pension name must precede the broad "PM Kisan" alias.
+  if (schemes['pm-kmy'].aliases.some(alias => alias.test(text))) return 'pm-kmy';
   return Object.entries(schemes).find(([, scheme]) => scheme.aliases.some(alias => alias.test(text)))?.[0] ?? null;
 }
 

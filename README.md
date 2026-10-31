@@ -2,6 +2,8 @@
 
 A WhatsApp-first assistant that helps people understand government schemes and explore which schemes may fit their situation. It answers in Hindi and English using reviewed public sources, explains preliminary questionnaire results, and links to the evidence. This is an independent student prototype, not an official government service.
 
+The current captain branch incorporates Tejas's six-scheme comparison: PM-KISAN, PM-KMY, NMMSS, PM-SYM, PM Vishwakarma and PMUY. Thirteen usable official documents are present at the 31 October check. New policy additions were compared to their official sources; independent team review is pending before public release. See [national coverage](docs/NATIONAL_ROLE_COVERAGE.md) and [integration checks](docs/PR10_INTEGRATION_CHECK.md). Local Qwen selects cited records; a 12-hour local source scan discovers under-review leads while the bot runs.
+
 ## Problem statement
 
 India has many welfare, scholarship, and agriculture schemes, but their eligibility rules can be difficult to find and understand. Yojana Sahayak turns public scheme documents into short, cited answers and uses a brief questionnaire to suggest possible matches.

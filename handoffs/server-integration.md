@@ -1,5 +1,12 @@
 # Server integration handoff
 
+## PR #10 integration — 31 October 2026
+
+- Integrated Tejas head `8b0667a` with captain discovery commit `07b21c2`. Six reviewed-rule schemes and 13 usable documents now reach the local bot. Source/rule review found no mismatch in the added policy summaries; their manifest still records assistant review and pending independent team review before public release. Unapproved PMFBY candidates remain outside factual answers.
+- Fixed merge regressions: confirmed facts and income periods now seed comparison; descriptive text/confirmed voice answers require confirmation; starting a new voice profile clears the old comparison; comparison results offer CSC consent before location. Missing questions are summarized with NEXT rather than repeated as a long list. The local 12-hour scan preserves the next due time across restarts and now checks all approved importer hosts while keeping new-link discovery bounded. Daily cloud reports and local candidates use separate runtime files.
+- Files: PR #10 corpus, rules, comparison, extractor, observer and documentation additions plus captain changes to `server/whatsapp-flow.mjs`, `server/scheme-comparison.mjs`, `server/whatsapp-prototype.mjs`, `server/source-update-runner.mjs`, tests, updater and docs. See `docs/PR10_INTEGRATION_CHECK.md` and Tejas's handoff for exact API fields. The existing single `/api/recommend` form is preserved; Tejas adds a bounded `profiles` array and six scheme IDs with counts/scope notes. UI and Supabase were not edited.
+- Checks: 111/111 Node tests, 13/13 Python tests, build and whitespace checks passed. A real local Qwen Hindi PM-KMY question returned `mode: model_selected`, one official citation and a pinned answer in 1.08 seconds (one sample). Live handset text, speech and final CSC path remain for Charchit's consenting test. No public deployment is claimed. The bot will be restarted after committing the merge.
+
 ## Website and experimental voice
 
 - Added a bilingual, mobile-friendly scheme directory at `/` and a WhatsApp link using the owner's expressly approved personal number. The link opens a prepared message; the user sends it manually. Existing practice React entrypoint remains in `client/main.jsx`.

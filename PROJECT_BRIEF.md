@@ -2,6 +2,10 @@
 
 **Captain and server integration:** Charchit. **Status:** working pilot under development.
 
+**National multi-scheme extension:** `YOJANA SCHEMES` starts a comparison for any of the five roles. The alternative `/api/recommend` request accepts a `profiles` array and returns ranked, cited results with condition counts and unavailable schemes. The single-profile contract remains supported. Exact API fields, current rule coverage and the daily review workflow are documented in [MULTI_SCHEME_AND_DAILY_REVIEW.md](docs/MULTI_SCHEME_AND_DAILY_REVIEW.md). New discoveries remain outside approved retrieval until reviewed.
+
+**Takeover contract revision, 31 October:** The Baileys role menu now opts into comparison by default; the library's legacy mode remains available for compatibility. Single and bulk recommendations additionally accept PM-KMY, fresh-Class-IX NMMSS and PM Vishwakarma profiles. Their exact boolean fields and source limitations are in [NATIONAL_ROLE_COVERAGE.md](docs/NATIONAL_ROLE_COVERAGE.md). This supersedes the information-only student/artisan and three-scheme limitations in the original integration snapshot below. There are six covered schemes and thirteen usable documents at the recorded check; this is an initial national set, not exhaustive coverage.
+
 ## Official INNOVISTA problem 03
 
 Build an assistant that answers government-scheme questions in Hindi and English with a named source document, and helps a person find schemes they may qualify for. The minimum working version requires **10–20 public scheme documents**, runtime retrieval of relevant passages before answering, and a short eligibility questionnaire. A working prototype, live demo, readable source/setup instructions and future ideas are submission items. Use public or sample data and do not submit real personal information. Voice, more languages and a WhatsApp-style chat are bonus goals.

@@ -17,6 +17,30 @@ class UpdaterTests(unittest.TestCase):
         self.assertEqual(updater.links(body, HOME), [(RELEASE, "New Farmer Insurance Scheme")])
         self.assertFalse(updater.official("http://www.pib.gov.in/PressReleasePage.aspx"))
 
+    def test_approved_labour_source_checked_without_expanding_discovery_hosts(self):
+        labour = "https://www.labour.gov.in/approved-policy"
+        new_labour = "https://www.labour.gov.in/unreviewed-policy"
+        body = PAGE + b'<a href="https://www.labour.gov.in/unreviewed-policy">New Worker Pension Scheme</a>'
+        self.assertNotIn(new_labour, [url for url, _ in updater.links(body, HOME)])
+        self.assertTrue(updater.approved_official(labour))
+        self.assertFalse(updater.official(labour))
+        self.assertFalse(updater.approved_official("https://www.labour.gov.in:444/policy"))
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            fetched = []
+            def fetcher(url):
+                fetched.append(url)
+                return (body if url == HOME else ARTICLE), url
+            manifest = {"sources": [{"url": labour, "title": "Approved Labour Policy", "id": "labour-note",
+                                    "scheme_id": "pm-sym", "status": "approved", "snapshot_sha256": "0" * 64}]}
+            with patch.object(updater, "OUT", base), patch.object(updater, "INDEX", base / "candidates.json"), patch.object(updater, "STATE", base / "state.json"):
+                result = updater.scan(fetcher=fetcher, seeds=[HOME], manifest=manifest)
+                items = json.loads((base / "candidates.json").read_text(encoding="utf-8"))["items"]
+            self.assertIn(labour, fetched)
+            self.assertNotIn(new_labour, fetched)
+            self.assertEqual(result["failures"], 0)
+            self.assertEqual(next(item for item in items if item["url"] == labour)["kind"], "changed_source")
+
     def test_scan_adds_candidate_without_approving_and_deduplicates(self):
         with tempfile.TemporaryDirectory() as directory:
             base=Path(directory)

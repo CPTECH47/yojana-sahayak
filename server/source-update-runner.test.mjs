@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { SOURCE_SCAN_INTERVAL_MS, sourceScanDue, runSourceScan } from './source-update-runner.mjs';
+import { SOURCE_SCAN_INTERVAL_MS, sourceScanDue, sourceScanDelay, runSourceScan } from './source-update-runner.mjs';
 
 test('source scan becomes due at twelve hours',()=>{
   const dir=mkdtempSync(join(tmpdir(),'yojana-scan-'));
@@ -12,6 +12,7 @@ test('source scan becomes due at twelve hours',()=>{
     assert.equal(sourceScanDue(now,path),true);
     writeFileSync(path,JSON.stringify({checked_at:new Date(now).toISOString()}));
     assert.equal(sourceScanDue(now+SOURCE_SCAN_INTERVAL_MS-1,path),false);
+    assert.equal(sourceScanDelay(now+11*60*60*1000,path),60*60*1000);
     assert.equal(sourceScanDue(now+SOURCE_SCAN_INTERVAL_MS,path),true);
   } finally {rmSync(dir,{recursive:true,force:true});}
 });

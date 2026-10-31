@@ -8,14 +8,17 @@ test('corpus loader returns only passages from approved manifest sources', () =>
   assert.ok(passages.length > 0);
   assert.deepEqual([...new Set(passages.map(passage => passage.document_id))].sort(), [
     'nmms-2026-notice',
+    'nmmss-policy-2026',
     'nsp-scholarships-2026',
     'pm-sym-ministry-note-2025',
     'pmkisan-ekyc-methods',
     'pmkisan-guidelines',
     'pmkisan-home-2026',
     'pmkisan-instalments-2026',
+    'pmkmy-policy-2026',
     'pmuy-faq',
     'pmuy-new-connection',
+    'pmvishwakarma-policy-2026',
     'pmvishwakarma-scheme-booklet-2025',
   ]);
 });
