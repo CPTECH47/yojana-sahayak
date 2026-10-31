@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { extractProfileStatement, interpretQuestionAnswer } from './profile-extract.mjs';
-import { createWhatsAppConversation } from './whatsapp-flow.mjs';
+import { createWhatsAppConversation as baseConversation } from './whatsapp-flow.mjs';
 import { createVoiceFlow } from './voice-flow.mjs';
 import { createAnswerService } from './answer-service.mjs';
 import { loadPassages, retrieve } from './corpus.mjs';
 
 const answers=createAnswerService({passages:loadPassages(),model:async()=>({fact_ids:[]})});
+const createWhatsAppConversation=options=>baseConversation({discoverSchemes:async()=>({leads:[]}),...options});
 
 test('model cannot invent a role, income or income period',async()=>{
   const result=await extractProfileStatement('I am a farmer earning 500rs',{model:async()=>({role:'worker',income_period:'month',income_amount:999999})});

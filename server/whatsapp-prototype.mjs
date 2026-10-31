@@ -16,6 +16,7 @@ import { transcribeVoice } from './voice.mjs';
 import { createVoiceFlow } from './voice-flow.mjs';
 import { messageContent, messageText } from './whatsapp-content.mjs';
 import { installSafeSignalLogging } from './safe-signal-logging.mjs';
+import { startSourceUpdates } from './source-update-runner.mjs';
 
 installSafeSignalLogging(console);
 
@@ -44,7 +45,8 @@ const alertTimer=setInterval(async()=>{
     await deliverReviewedAlerts({store,answers,send,enabled:process.env.YOJANA_TEST_ALERTS==='1'});
   }catch{console.error('Reviewed-update check failed; no automatic approval performed.');}
 },5*60*1000);
-function stop(){stopped=true;clearTimeout(reconnectTimer);clearInterval(alertTimer);currentSocket?.end(new Error('Operator stopped'));store.close();authLock.close();process.exitCode=0;}
+const stopSourceUpdates=startSourceUpdates({log:message=>console.log(message)});
+function stop(){stopped=true;clearTimeout(reconnectTimer);clearInterval(alertTimer);stopSourceUpdates();currentSocket?.end(new Error('Operator stopped'));store.close();authLock.close();process.exitCode=0;}
 process.once('SIGINT',stop);process.once('SIGTERM',stop);
 
 async function start() {

@@ -17,7 +17,7 @@ The audit repairs live on `codex/project-hardening` pending captain review. Chec
 1. A user sends `YOJANA START` in a direct WhatsApp chat.
 2. The bot welcomes them and asks them to choose Hindi (`1`) or English (`2`).
 3. The user chooses a role and answers a few scheme-specific questions. Invalid answers are asked again; the user can go back, skip, or cancel.
-4. The bot returns a preliminary result with a short reason and source links, or gives relevant information without claiming eligibility where reviewed rules are not available.
+4. A free-form description can produce several cited scheme leads from approved sources. New official pages found by the 12-hour scanner are labelled under review. The bot checks selected reviewed rules for one scheme at a time, then returns a preliminary result with reasons and citations.
 5. The user can ask a scheme question; the bot answers from retrieved evidence and cites its source.
 
 Tapping a citation opens the official source. Some sources open as long PDF documents; the message includes the cited page so the user can locate the supporting section. Recommendation replies also offer the [official CSC locator](https://locator.csccloud.in/) for people seeking in-person help; users select their area there. The bot does not automatically find or verify the nearest centres.
@@ -39,7 +39,7 @@ Tapping a citation opens the official source. Some sources open as long PDF docu
 
 This repository contains a local prototype; no public production URL is documented here. The repaired flow needs a paired-phone retest. Real model selection requires Ollama and `qwen3:4b`; a labelled extractive fallback remains available without them. Matching checks selected conditions and does not confirm government eligibility. Run `npm run check:release` for the current evidence count: ten sources are usable on 31 October 2026, but two expire before 1 November unless reviewed again.
 
-The corpus is an initial quality-controlled set, not comprehensive coverage of all Indian schemes. Student and artisan flows are information-only. Supabase scheme storage, public deployment, live CSC results, automatic nearest-centre lookup, and scheduled source monitoring are not implemented or verified. An opt-in local voice-question path has been added but still requires model installation and a real-phone test. The CSC link is a manual link-out; users select their state, district, or other area details on the official locator.
+The corpus is an initial quality-controlled set, not comprehensive coverage of all Indian schemes. Student and artisan flows are information-only. Supabase scheme storage, public deployment, live CSC results and automatic nearest-centre lookup are not implemented or verified. A 12-hour source scanner runs while the WhatsApp process runs and creates local review candidates from selected official pages; it does not automatically approve new eligibility rules or cover every government website. The CSC link is a manual link-out; users select their state, district, or other area details on the official locator.
 
 ## Technology
 
@@ -55,7 +55,7 @@ The corpus is an initial quality-controlled set, not comprehensive coverage of a
 
 ## Sources and answer safety
 
-The corpus records source URLs, authorities, verification dates, hashes, status, and page or section locators in `corpus/manifest.json` and `corpus/passages.json`. myScheme, India.gov.in, and data.gov.in are used for discovery and change detection; eligibility answers rely on approved evidence from the issuing ministry or official programme source.
+The corpus records source URLs, authorities, verification dates, hashes, status, and page or section locators in `corpus/manifest.json` and `corpus/passages.json`. myScheme, India.gov.in, and data.gov.in are research and discovery references. The automated scanner currently follows selected PIB and programme pages; it is not a complete feed from those directories. Eligibility answers rely on approved evidence from the issuing ministry or official programme source.
 
 The server excludes unapproved, expired or altered passages. A model can choose only supported fact IDs; the stored English/Hindi text supplies the final amount, period and conditions. The bounded records can still be incomplete or imperfectly selected, and source review remains necessary. Users should verify consequential decisions with the issuing authority. The assistant must not request Aadhaar numbers, bank details, or other beneficiary identifiers.
 
@@ -123,7 +123,7 @@ See [PROJECT_BRIEF.md](PROJECT_BRIEF.md) for exact request and response fields.
 
 Keep credentials in local environment variables or the hosting provider’s secret settings. Never commit `.env`, Baileys session files, Supabase secret or service-role keys, or real user data. Browser code must not contain a Supabase secret key. `.env.example` contains placeholders only.
 
-To fetch review candidates, install `requirements-ingest.txt` in a Python environment and use `python scripts/ingest_sources.py --fetch SOURCE_ID`. No-argument invocation only prints help. A separate reviewer-authored approval file is required to publish. See [the repair guide](docs/HARDENING.md) for pinning, private state, alert controls, API authentication and release checks.
+Install the scanner packages with `python -m pip install -r requirements-ingest.txt`. Run `npm.cmd run sources:update` for one official-source scan; the running WhatsApp bot checks again every 12 hours. Candidate snapshots and the queue stay in ignored `.runtime/source-discovery/`. To fetch a specific known source, use `python scripts/ingest_sources.py --fetch SOURCE_ID`. A separate reviewer-authored approval file is required to publish factual passages and eligibility rules. See [the repair guide](docs/HARDENING.md) for pinning, private state, alert controls, API authentication and release checks.
 
 ## Further documentation
 
