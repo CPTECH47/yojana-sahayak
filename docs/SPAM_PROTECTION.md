@@ -18,6 +18,14 @@ The answer cache key hashes the exact normalized question, resolved scheme, lang
 
 Admission counters are local to one bot process and reset at restart. Durable delivered-event records survive restart. A deployment with several bot processes needs shared counters/locks to enforce the same limits across them. The controls reduce accidental bursts and abuse; they do not promise complete protection from distributed traffic or a fixed provider bill.
 
+## Private tester exemptions
+
+Set `YOJANA_TEST_ALLOWLIST` in the ignored `.env` to comma-separated international phone numbers (country code required, optional `+`), then restart the bot. The repository's `.env.example` leaves this empty; real tester numbers must never be added to tracked files. Clear the variable and restart when testing ends.
+
+Listed testers bypass only the text and voice token buckets. Event-ID deduplication, one active request per chat, global concurrency, message/media size limits and source checks remain enforced. Rapid messages sent before a previous reply finishes still receive the busy response; this prevents overlapping questionnaire answers or paid transcription work.
+
+Identity is taken from a direct phone JID, or Baileys `message.key.senderPn` when the direct chat uses a LID. A numeric LID, display name, user-written number or group participant does not establish an exemption. When the transport supplies no phone identity, the normal quotas apply. Exempt voice use still consumes provider credits.
+
 Implementation: `server/whatsapp-guard.mjs`, `server/whatsapp-ingress.mjs`, `server/answer-service.mjs`, and the Baileys entry point. Limits are constructor options in the guard. Source-bound caching is configurable using `selectionCacheMaximum` and `selectionCacheTtlMs` in `createAnswerService`; zero capacity disables retained selection caching.
 
 Verification uses fake clocks, synthetic event IDs and mocked media/model calls. It checks suppression before audio download, bounded state, retry and recovery, one in-flight request, repeated numeric answers, concurrency sharing, cache expiry and changed/expired evidence. Do not run a spam test against real WhatsApp accounts or spend Sarvam credits to validate these controls.

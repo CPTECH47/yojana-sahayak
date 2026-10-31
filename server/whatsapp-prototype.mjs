@@ -14,6 +14,8 @@ import { scanReviewedUpdates, deliverReviewedAlerts } from './alerts.mjs';
 import { transcribeVoice } from './voice.mjs';
 import { createVoiceFlow } from './voice-flow.mjs';
 import { createWhatsAppIngress } from './whatsapp-ingress.mjs';
+import { createWhatsAppGuard } from './whatsapp-guard.mjs';
+import { parseTestAllowlist } from './tester-allowlist.mjs';
 import { installSafeSignalLogging } from './safe-signal-logging.mjs';
 import { startSourceUpdates } from './source-update-runner.mjs';
 
@@ -39,6 +41,7 @@ const deliver=createDelivery({store,handle:async (chat,text)=>{
   return voice.handle(chat,text);
 },send});
 const receive=createWhatsAppIngress({conversation,voice,store,deliver,send,pendingVoice,
+  guard:createWhatsAppGuard({testNumbers:parseTestAllowlist(process.env.YOJANA_TEST_ALLOWLIST)}),
   maxVoiceSeconds:process.env.YOJANA_STT_PROVIDER==='sarvam'?30:60,
   downloadAudio:message=>downloadMediaMessage(message,'buffer',{}, {logger:pino({level:'silent'}),reuploadRequest:currentSocket?.updateMediaMessage}),
   log:message=>console.log(message)});

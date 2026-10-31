@@ -33,7 +33,7 @@ export function createWhatsAppIngress({conversation,voice,store,deliver,download
     if(!acceptsAudio && command===null && !conversation.acceptsBareQuestionnaireReply(jid,rawText) && !voice.acceptsPendingChoice(jid,rawText))return 'ignored';
     // Retained delivery records survive process restarts; check before download.
     if(store.get('messages',store.id(jid+':'+id)))return 'duplicate';
-    const decision=guard.acquire(jid,id,{voice:acceptsAudio});
+    const decision=guard.acquire(jid,id,{voice:acceptsAudio,senderJid:message.key?.senderPn});
     if(!decision.allowed){
       if(decision.notice){try{await send(jid,rejectionText(decision,conversation.selectedLanguage(jid)));}catch{/* No backend retry. */}}
       return decision.reason;

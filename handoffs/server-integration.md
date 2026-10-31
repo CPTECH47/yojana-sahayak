@@ -1,5 +1,10 @@
 # Server integration handoff
 
+## Private test allowlist — 31 October 2026
+
+- Added an empty-by-default `YOJANA_TEST_ALLOWLIST` setting, configured only in the local ignored `.env` for the two testers Charchit supplied. The actual numbers are not in Git. `server/tester-allowlist.mjs` validates international numbers and matches trusted direct phone JIDs or Baileys `senderPn` metadata for LID chats. No message text/display name can grant an exemption.
+- Testers bypass text/voice quota buckets only. Duplicate IDs, per-chat/global concurrency and payload/source checks remain. Files: the allowlist module/test, guard, ingress/test, Baileys entry point, `.env.example`, spam guide and this handoff. No API fields changed. Focused tests: 19/19 passed with fictional numbers; full Node suite: 139/139 passed using mocked/offline model paths, and build passed. Local configuration count verified as two; actual sender matching on a phone still needs manual observation after restart. Clearing the private variable and restarting removes exemptions.
+
 ## Spam controls and factual-selection cache — 31 October 2026
 
 - Added admission before media download/Sarvam/conversation processing: text bucket burst 8/refill 30 per minute, voice burst 2/refill 6 per minute, one active request per chat and four globally. Duplicate event IDs are checked against durable delivery records before downloads, then bounded in-memory IDs. A bilingual denial notice is sent at most once per chat per 15 seconds. Numeric answers with different IDs remain valid; rejected events never advance or queue a questionnaire answer. Local counters reset at restart; distributed replicas need shared state.

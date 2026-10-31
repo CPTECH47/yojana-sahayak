@@ -1,14 +1,17 @@
 // Admission runs before media download, transcription or conversation/model work.
 // It deduplicates WhatsApp event IDs, never a person's answer text.
+import { isAllowlistedTestUser } from './tester-allowlist.mjs';
 export function createWhatsAppGuard({
   now=Date.now,maximumChats=2000,maximumActive=4,textCapacity=8,textPerMinute=30,
   voiceCapacity=2,voicePerMinute=6,idRetentionMs=10*60*1000,maximumIds=128,
   idleMs=10*60*1000,noticeCooldownMs=15000,
+  testNumbers=new Set(),
 }={}){
   for(const value of [maximumChats,maximumActive,textCapacity,textPerMinute,voiceCapacity,voicePerMinute,idRetentionMs,maximumIds,idleMs,noticeCooldownMs]){
     if(!Number.isFinite(value)||value<=0)throw new TypeError('Guard limits must be positive finite numbers');
   }
   const chats=new Map();
+  const allowedNumbers=new Set(testNumbers);
   let active=0;
   const noRelease=()=>{};
   const bucket=(capacity,at)=>({tokens:capacity,at});
@@ -27,7 +30,7 @@ export function createWhatsAppGuard({
       for(const [id,seenAt] of state.ids)if(at-seenAt>=idRetentionMs)state.ids.delete(id);
     }
   }
-  function acquire(chat,id,{voice=false}={}){
+  function acquire(chat,id,{voice=false,senderJid}={}){
     const at=now();
     prune(at);
     if(typeof chat!=='string'||!chat||typeof id!=='string'||!id)return denied(null,'invalid_request',0,at);
@@ -44,12 +47,14 @@ export function createWhatsAppGuard({
     state.ids.set(id,at);
     if(state.busy)return denied(state,'busy',1,at);
     if(active>=maximumActive)return denied(state,'service_busy',5,at);
-    refill(state.text,textCapacity,textPerMinute,at);
-    refill(state.voice,voiceCapacity,voicePerMinute,at);
-    if(state.text.tokens<1)return denied(state,'rate_limited',Math.ceil((1-state.text.tokens)*60/textPerMinute),at);
-    if(voice && state.voice.tokens<1)return denied(state,'voice_rate_limited',Math.ceil((1-state.voice.tokens)*60/voicePerMinute),at);
-    state.text.tokens-=1;
-    if(voice)state.voice.tokens-=1;
+    if(!isAllowlistedTestUser(allowedNumbers,chat,senderJid)){
+      refill(state.text,textCapacity,textPerMinute,at);
+      refill(state.voice,voiceCapacity,voicePerMinute,at);
+      if(state.text.tokens<1)return denied(state,'rate_limited',Math.ceil((1-state.text.tokens)*60/textPerMinute),at);
+      if(voice && state.voice.tokens<1)return denied(state,'voice_rate_limited',Math.ceil((1-state.voice.tokens)*60/voicePerMinute),at);
+      state.text.tokens-=1;
+      if(voice)state.voice.tokens-=1;
+    }
     state.busy=true;
     active++;
     let released=false;

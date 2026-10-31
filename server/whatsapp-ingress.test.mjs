@@ -77,3 +77,17 @@ test('empty downloaded audio offers recovery and never calls transcription',asyn
   assert.equal(f.calls(),0);
   assert.equal(await f.receive(message('recover')),'sent');
 });
+
+test('LID quota exemption uses trusted senderPn metadata only',async()=>{
+  const phone='15555550101';
+  const guard=createWhatsAppGuard({now:()=>0,testNumbers:new Set([phone])});
+  const f=setup({guard});
+  for(let i=0;i<10;i++){
+    const event=message('lid-'+i,{chat:'123456789@lid'});
+    event.key.senderPn=phone+'@s.whatsapp.net';
+    assert.equal(await f.receive(event),'sent');
+  }
+  const stranger=setup({guard:createWhatsAppGuard({now:()=>0,testNumbers:new Set([phone])})});
+  for(let i=0;i<8;i++)await stranger.receive(message('u'+i,{text:'YOJANA '+phone,chat:'987654321@lid'}));
+  assert.equal(await stranger.receive(message('blocked',{text:'YOJANA '+phone,chat:'987654321@lid'})),'rate_limited');
+});
