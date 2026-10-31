@@ -1,6 +1,7 @@
 import { loadPassages, schemeFromText } from './corpus.mjs';
 import { topicFor } from './verified-facts.mjs';
 import { memoryStore } from './local-store.mjs';
+import { extractProfileStatement, isProfileStatement } from './profile-extract.mjs';
 
 function normalize(text) {
   return String(text ?? '').trim().normalize('NFC').toLocaleLowerCase().replace(/[.!?।,]/gu, '').trim();
@@ -17,8 +18,9 @@ function isStart(text) {
   return /^(?:start|hi|hello|नमस्ते|नमस्कार)?$/iu.test(normalize(text));
 }
 
-function languagePrompt() {
-  return '🌱 Yojana Sahayak\nआपकी ज़रूरत के अनुसार सरकारी योजनाओं की जानकारी।\nGovernment scheme guidance, made easier.\n\nभाषा चुनें / Choose your language:\nहिंदी के लिए 1 दबाएँ / For Hindi, press 1\nअंग्रेज़ी के लिए 2 दबाएँ / For English, press 2';
+function languagePrompt(naturalFlow=false) {
+  return '🌱 Yojana Sahayak\nआपकी ज़रूरत के अनुसार सरकारी योजनाओं की जानकारी।\nGovernment scheme guidance, made easier.\n\nभाषा चुनें / Choose your language:\nहिंदी के लिए 1 दबाएँ / For Hindi, press 1\nअंग्रेज़ी के लिए 2 दबाएँ / For English, press 2'
+    +(naturalFlow?'\n\nआप अपनी बात हिंदी या अंग्रेज़ी में आवाज़ या लिखकर भी बता सकते हैं।\nYou can also describe your situation by voice or text.\nRestart anytime: *YOJANA START*':'');
 }
 
 function rolePrompt(language, error = false) {
@@ -27,10 +29,13 @@ function rolePrompt(language, error = false) {
   return `${lead}Which best describes you? I’ll use this to find relevant scheme information.\n1 Farmer\n2 Student\n3 Worker\n4 Artisan or craft worker\n5 Family member / other citizen\n\nReply with the number.`;
 }
 
-function intro(language) {
-  return language === 'hi'
+function intro(language,naturalFlow=false) {
+  if(!naturalFlow)return language==='hi'
     ? 'डेमो में केवल काल्पनिक जानकारी दें। आधार, बैंक विवरण या पहचान संख्या न भेजें। सवाल कभी भी पूछ सकते हैं। उत्तर सत्र में रहेंगे; SAVE से सहमति देकर 30 दिन के लिए सहेज सकते हैं।'
     : 'Use fictional information for this demo. Do not send Aadhaar, bank details, or ID numbers. Ask a question at any time. Answers stay in this session; SAVE explicitly consents to saving them for 30 days.';
+  return language === 'hi'
+    ? 'केवल ज़रूरी जानकारी दें। आधार, बैंक विवरण या पहचान संख्या न भेजें। यह सरकारी पात्रता निर्णय नहीं है। जवाब इस सत्र में रहेंगे; SAVE से सहमति देकर 30 दिन के लिए सहेज सकते हैं।'
+    : 'Share only necessary details. Do not send Aadhaar, bank details, or ID numbers. This is not an official eligibility decision. Answers stay in this session; SAVE explicitly consents to saving them for 30 days.';
 }
 
 const questionSets = {
@@ -64,12 +69,9 @@ const roleNames = {
 function currentQuestion(state, error = false) {
   const language = state.language;
   const item = questionSets[state.role][state.index];
-  const lead = error ? (language === 'hi' ? 'जवाब समझ नहीं आया। कृपया नीचे दिए गए विकल्पों में से चुनें।\n' : 'I didn’t understand that. Reply YES or NO, or use BACK, SKIP, or CANCEL.\n') : '';
-  const answerHint = language === 'hi' ? '\n1 हाँ\n2 नहीं\n3 पिछला सवाल (BACK)\n4 पता नहीं (SKIP)\n5 रोकें (CANCEL)' : '\nAnswer: YES / NO';
-  const controls = language === 'hi'
-    ? '\nविकल्प का नंबर भेजें। हाँ, नहीं, BACK, SKIP या CANCEL भी लिख सकते हैं।'
-    : '\nCorrect the previous answer: BACK · Unsure: SKIP · Stop: CANCEL';
-  return `${lead}${state.index + 1}/${questionSets[state.role].length}. ${item[language]}${answerHint}${controls}`;
+  const lead = error ? (language === 'hi' ? 'जवाब समझ नहीं आया। 1 हाँ, 2 नहीं या SKIP भेजें। फिर से शुरू करने के लिए *YOJANA START* भेजें।\n' : 'I could not understand that answer. Reply YES, NO or SKIP; send *YOJANA START* to restart.\n') : '';
+  const answerHint = language === 'hi' ? '\n1 हाँ\n2 नहीं\n3 पिछला सवाल (BACK)\n4 पता नहीं (SKIP)\n5 रोकें (CANCEL)' : '\n1 Yes\n2 No\n3 Back\n4 Skip / unsure\n5 Cancel';
+  return `${lead}${state.index + 1}/${questionSets[state.role].length}. ${item[language]}${answerHint}`;
 }
 
 function parseRole(text) {
@@ -151,7 +153,7 @@ function infoOnly(role, language, passages) {
 }
 
 // Language and profile answers are kept per direct chat in process memory and cleared on completion/restart.
-export function createWhatsAppConversation({ answers, passages, store = memoryStore(), now = Date.now }) {
+export function createWhatsAppConversation({ answers, passages, store = memoryStore(), now = Date.now, naturalFlow = process.env.YOJANA_NATURAL_FLOW !== '0', extractProfile = extractProfileStatement }) {
   const languageByChat = new Map();
   const questionnaireByChat = new Map();
   const completedByChat = new Map();
@@ -159,9 +161,14 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
   const touched = new Map();
   const awaitingCsc = new Map();
   const awaitingCscOffer = new Map();
+  const moreSchemeByChat = new Map();
+  const sensitive=/(?:\baadhaar\b|\baadhar\b|\baccount number\b|\bifsc\b|\bpan card\b|आधार|बैंक खाता|खाता संख्या|पैन नंबर)/iu;
   const cscOffer = language => language === 'hi'
     ? 'क्या नज़दीकी सेवा केंद्र खोजने में मदद चाहिए?\n1 हाँ · 2 नहीं'
     : 'Would you like help finding a nearby service centre?\n1 Yes · 2 No';
+  const moreHint = language => language==='hi'
+    ? 'दूसरी योजना की शुरुआती जाँच के लिए *YOJANA MORE* भेजें।'
+    : 'Send *YOJANA MORE* for another preliminary scheme check.';
   function saved(chatId) {
     const id=store.id(chatId), value=store.get('profiles',id);
     if(value?.expires_at<=now()){store.delete('profiles',id);return null;}
@@ -185,13 +192,27 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     catch { return language==='hi'?'उत्तर सेवा अभी उपलब्ध नहीं है। कृपया बाद में पूछें।':'The answer service is unavailable. Please try again later.'; }
     const mode=result.mode==='extractive'?(language==='hi'?'जाँचे गए रिकॉर्ड का उत्तर (स्थानीय मॉडल उपलब्ध नहीं था)।\n':'Answer from reviewed records (local model unavailable).\n'):'';
     return mode+(result.answer_text || (language==='hi'?'उत्तर उपलब्ध नहीं है।':'No answer is available.'))+
-      (result.citations?.length?'\n'+result.citations.map(c=>(language==='hi'?'स्रोत: ':'Source: ')+c.title+', '+c.locator+' — '+c.url).join('\n'):'');
+      (result.citations?.length?'\n'+result.citations.map(c=>(language==='hi'?'स्रोत: ':'Source: ')+c.title+', '+c.locator+' — '+c.url).join('\n'):'')+
+      (result.status==='insufficient_evidence'?(language==='hi'?'\nइस सवाल की पुष्टि नहीं कर सकता। नया सवाल पूछें या *YOJANA START* से फिर शुरू करें।':'\nI cannot confirm this answer. Ask another question or send *YOJANA START* to restart.'):'');
   }
 
   async function beginProfile(chatId, language) {
     languageByChat.set(chatId, language);
     questionnaireByChat.set(chatId, { phase: 'role', language, profile: {} });
-    return `${intro(language)}\n\n${rolePrompt(language)}`;
+    return `${intro(language,naturalFlow)}\n\n${rolePrompt(language)}`;
+  }
+
+  async function handleProfileStatement(chatId,text,voiceLanguage=null) {
+    if(!naturalFlow || !isProfileStatement(text)) return null;
+    const language=voiceLanguage==='hi'||voiceLanguage==='en' ? voiceLanguage : languageByChat.get(chatId)||(/[\u0900-\u097f]/u.test(text)?'hi':'en');
+    if(sensitive.test(text))return language==='hi'?'कृपया आधार, बैंक या पहचान संख्या न भेजें। बिना इन विवरणों के अपनी स्थिति बताएँ।':'Please do not send Aadhaar, bank or ID numbers. Describe your situation without them.';
+    const candidate=await extractProfile(text);
+    if(!candidate.role)return language==='hi'?'मैं आपकी भूमिका स्पष्ट नहीं समझ पाया। किसान, विद्यार्थी, कामगार, कारीगर या परिवार का सदस्य लिखें; या *YOJANA START* भेजें।':'I could not identify your role. Say farmer, student, worker, artisan or family member; or send *YOJANA START*.';
+    languageByChat.set(chatId,language);
+    questionnaireByChat.set(chatId,{phase:'natural_confirm',language,candidate});
+    const roleLabel={farmer:['किसान','farmer'],worker:['कामगार','worker'],student:['विद्यार्थी','student'],artisan:['कारीगर','artisan'],family:['परिवार का सदस्य','family member']}[candidate.role];
+    const amount=candidate.income_amount===null?'':language==='hi'?`, आपकी व्यक्तिगत आय ₹${candidate.income_amount}${candidate.income_period?' '+({day:'प्रतिदिन',week:'प्रति सप्ताह',month:'प्रति माह',year:'प्रति वर्ष'}[candidate.income_period]):' (समय स्पष्ट नहीं)'}`:`; your personal income ₹${candidate.income_amount}${candidate.income_period?' per '+candidate.income_period:' (period unclear)'}`;
+    return language==='hi'?`मैंने समझा: ${roleLabel[0]}${amount}।\n1 सही · 2 सुधारें · 3 रद्द करें\nसही वाक्य भी भेज सकते हैं।`:`I understood: ${roleLabel[1]}${amount}.\n1 Confirm · 2 Correct · 3 Cancel\nYou can also send a corrected sentence.`;
   }
 
   async function handle(chatId, text) {
@@ -212,19 +233,19 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       if (['1','yes','y','हाँ','हां','जी'].includes(value)) {
         awaitingCscOffer.delete(chatId);awaitingCsc.set(chatId,now()+300000);
         return language==='hi'
-          ? 'कृपया अपना 6 अंकों का PIN कोड या शहर का नाम भेजें। नहीं बताना हो तो SKIP भेजें।'
-          : 'Please send your 6-digit PIN code or town name. Send SKIP if you prefer not to share it.';
+          ? 'कृपया 6 अंकों का PIN कोड या शहर का नाम भेजें।\n1 छोड़ें · 2 रद्द करें'
+          : 'Send your 6-digit PIN code or town name.\n1 Skip · 2 Cancel';
       }
       if (['2','no','n','नहीं','नही','ना','skip','cancel'].includes(value)) {
         awaitingCscOffer.delete(chatId);
         return language==='hi'?'ठीक है। योजना के बारे में सवाल पूछने के लिए YOJANA के बाद सवाल भेजें।':'Okay. Send YOJANA followed by a scheme question whenever you need help.';
       }
-      if (/^(?:start|stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next)$/iu.test(value) || /[?？]/u.test(text) || /^(?:ask\s|what\b|how\b|who\b|when\b|क्या|कितन|कैसे|कब)/iu.test(text)) awaitingCscOffer.delete(chatId);
+      if (/^(?:start|stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next|more)$/iu.test(value) || /[?？]/u.test(text) || /^(?:ask\s|what\b|how\b|who\b|when\b|क्या|कितन|कैसे|कब)/iu.test(text)) awaitingCscOffer.delete(chatId);
       else return cscOffer(language);
     }
     if (awaitingCsc.get(chatId) && awaitingCsc.get(chatId) > now()) {
-      if (value === 'cancel' || value === 'skip' || value === 'start') { awaitingCsc.delete(chatId); if(value!=='start') return language==='hi'?'केंद्र की खोज छोड़ दी गई। सवाल पूछने के लिए YOJANA के बाद अपना सवाल भेजें।':'Centre search skipped. Send YOJANA followed by your question whenever you need help.'; }
-      else if (/^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next)$/iu.test(value) || /[?？]/u.test(text)) awaitingCsc.delete(chatId);
+      if (value === 'cancel' || value === 'skip' || value === '1' || value === '2' || value === 'start') { awaitingCsc.delete(chatId); if(value!=='start') return language==='hi'?'केंद्र की खोज छोड़ दी गई। सवाल पूछने के लिए YOJANA के बाद अपना सवाल भेजें।':'Centre search skipped. Send YOJANA followed by your question whenever you need help.'; }
+      else if (/^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next|more)$/iu.test(value) || /[?？]/u.test(text)) awaitingCsc.delete(chatId);
       else {
         const area=String(text).trim();
         if (!/^[\p{L}\p{M}\p{N} .,'-]{2,60}$/u.test(area) || (/^\d+$/.test(area) && !/^[1-9]\d{5}$/.test(area))) return language==='hi'?'कृपया सही 6 अंकों का PIN कोड या शहर का नाम भेजें।':'Please send a valid 6-digit PIN code or a town name.';
@@ -237,7 +258,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     if(value==='delete') {
       store.delete('profiles',store.id(chatId));
       for(const [key,a] of store.entries('alerts'))if(a.profile_id===store.id(chatId))store.delete('alerts',key);
-      questionnaireByChat.delete(chatId);completedByChat.delete(chatId);languageByChat.delete(chatId);lastSchemeByChat.delete(chatId);awaitingCscOffer.delete(chatId);awaitingCsc.delete(chatId);
+      questionnaireByChat.delete(chatId);completedByChat.delete(chatId);languageByChat.delete(chatId);lastSchemeByChat.delete(chatId);awaitingCscOffer.delete(chatId);awaitingCsc.delete(chatId);moreSchemeByChat.delete(chatId);
       return language==='hi'?'सहेजी गई जानकारी और अपडेट की सहमति मिटा दी गई।':'Saved profile and update consent deleted.';
     }
     if(['stop','alerts off'].includes(value)){
@@ -247,11 +268,11 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     }
     if(value==='save'){
       const profiles=completedByChat.get(chatId);
-      if(!profiles || !Object.keys(profiles).length)return language==='hi'?'पहले नमूना जाँच पूरी करें।':'Complete a fictional profile check first.';
+      if(!profiles || !Object.keys(profiles).length)return language==='hi'?'पहले शुरुआती जाँच पूरी करें।':'Complete a preliminary check first.';
       const old=saved(chatId);
       store.put('profiles',store.id(chatId),{...old,storage_consent:true,alert_opt_in:old?.alert_opt_in||false,language,
         profile:state?.profile || Object.values(profiles).at(-1),profiles,expires_at:now()+30*86400000});
-      return language==='hi'?'आपकी सहमति से नमूना जानकारी 30 दिन के लिए सहेजी गई। RESUME से खोलें; DELETE से मिटाएँ। अपडेट पाने के लिए अलग से ALERTS ON भेजें।':'With your consent, the fictional profile is saved for 30 days. RESUME to reopen or DELETE to erase. Send ALERTS ON separately if you want reviewed scheme updates.';
+      return language==='hi'?'आपकी सहमति से दी गई जानकारी 30 दिन के लिए सहेजी गई। RESUME से खोलें; DELETE से मिटाएँ। अपडेट पाने के लिए अलग से ALERTS ON भेजें।':'With your consent, the supplied profile is saved for 30 days. RESUME to reopen or DELETE to erase. Send ALERTS ON separately if you want reviewed scheme updates.';
     }
     if(value==='alerts on'){
       const old=saved(chatId);
@@ -271,10 +292,56 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     }
 
     if (isStart(text)) {
-      awaitingCsc.delete(chatId);awaitingCscOffer.delete(chatId);lastSchemeByChat.delete(chatId);
+      awaitingCsc.delete(chatId);awaitingCscOffer.delete(chatId);lastSchemeByChat.delete(chatId);moreSchemeByChat.delete(chatId);
       languageByChat.delete(chatId);
       questionnaireByChat.set(chatId, { phase: 'language' });
-      return languagePrompt()+(saved(chatId)?'\nRESUME: saved fictional profile / सहेजी गई नमूना जानकारी':'');
+      return languagePrompt(naturalFlow)+(saved(chatId)?'\nRESUME: saved profile / सहेजी गई जानकारी':'');
+    }
+
+    if(naturalFlow && state?.phase==='natural_confirm'){
+      if(value==='3'||value==='cancel'){questionnaireByChat.delete(chatId);return state.language==='hi'?'जाँच रद्द की गई। फिर शुरू करने के लिए *YOJANA START* भेजें।':'Check cancelled. Send *YOJANA START* to restart.';}
+      if(value==='2') {questionnaireByChat.set(chatId,{phase:'role',language:state.language,profile:{}});return state.language==='hi'?'सही विवरण लिखें, या नीचे अपनी भूमिका चुनें।\n'+rolePrompt(state.language):'Send a corrected sentence, or choose your role below.\n'+rolePrompt(state.language);}
+      if(value!=='1')return await handleProfileStatement(chatId,text,state.language) || (state.language==='hi'?'1 से पुष्टि करें या 2 से सुधारें।':'Reply 1 to confirm or 2 to correct.');
+      const roleNumber={farmer:'1',student:'2',worker:'3',artisan:'4',family:'5'}[state.candidate.role];
+      questionnaireByChat.set(chatId,{phase:'role',language:state.language,profile:{}});
+      const nextMessage=await handle(chatId,roleNumber);
+      const current=questionnaireByChat.get(chatId);
+      if(current?.phase!=='questions')return nextMessage;
+      current.profile.income_amount=state.candidate.income_amount;
+      current.profile.income_period=state.candidate.income_period;
+      if(state.candidate.income_amount!==null && !state.candidate.income_period){
+        current.phase='income_period';questionnaireByChat.set(chatId,current);
+        return state.language==='hi'?'₹'+state.candidate.income_amount+' कितने समय की आय है?\n1 प्रतिदिन · 2 प्रति सप्ताह · 3 प्रति माह · 4 प्रति वर्ष · 5 पता नहीं · 6 वापस · 7 रद्द करें':'₹'+state.candidate.income_amount+' is income for which period?\n1 Day · 2 Week · 3 Month · 4 Year · 5 Unsure · 6 Back · 7 Cancel';
+      }
+      if(current.role==='worker' && state.candidate.income_period==='month')current.profile.monthly_income_at_most_15000=state.candidate.income_amount<=15000;
+      return currentQuestion(current);
+    }
+    if(naturalFlow && state?.phase==='income_period'){
+      if(value==='7'||value==='cancel'){questionnaireByChat.delete(chatId);return state.language==='hi'?'जाँच रद्द की गई। *YOJANA START* भेजकर फिर शुरू करें।':'Check cancelled. Send *YOJANA START* to restart.';}
+      if(value==='6'||value==='back'){
+        const next={phase:'natural_confirm',language:state.language,candidate:{role:state.role,income_amount:state.profile.income_amount,income_period:null}};
+        questionnaireByChat.set(chatId,next);
+        return state.language==='hi'?'पहली जानकारी पर वापस। 1 सही · 2 सुधारें · 3 रद्द करें।':'Back to your profile. 1 Confirm · 2 Correct · 3 Cancel.';
+      }
+      const period=({1:'day',2:'week',3:'month',4:'year',5:null,day:'day',week:'week',month:'month',year:'year',daily:'day',weekly:'week',monthly:'month',yearly:'year',skip:null})[value];
+      if(period===undefined)return state.language==='hi'?'आय का समय 1–5 से बताएँ या *YOJANA START* से फिर शुरू करें।':'Choose income period 1–5, or send *YOJANA START* to restart.';
+      state.profile.income_period=period;state.phase='questions';
+      if(state.role==='worker' && period==='month')state.profile.monthly_income_at_most_15000=state.profile.income_amount<=15000;
+      questionnaireByChat.set(chatId,state);
+      return currentQuestion(state);
+    }
+    if(naturalFlow && (state?.phase==='language'||state?.phase==='role') && isProfileStatement(text)){
+      return await handleProfileStatement(chatId,text);
+    }
+    if(naturalFlow && value==='more' && state?.phase==='complete' && moreSchemeByChat.get(chatId)==='pm-sym'){
+      moreSchemeByChat.delete(chatId);
+      const previous=state.profile;
+      const next={phase:'questions',language,role:'worker',index:0,profile:{scheme_id:'pm-sym',income_amount:previous.income_amount??null,income_period:previous.income_period??null}};
+      if(next.profile.income_period==='month' && Number.isSafeInteger(next.profile.income_amount))next.profile.monthly_income_at_most_15000=next.profile.income_amount<=15000;
+      questionnaireByChat.set(chatId,next);
+      const source=(passages??loadPassages()).find(p=>p.id==='pm-sym-ministry-note-2025:2');
+      return (language==='hi'?'अब PM-SYM की अलग शुरुआती जाँच करेंगे। किसान होने से कामगार की पात्रता अपने आप सिद्ध नहीं होती।':'Next is a separate preliminary PM-SYM check. Being a farmer alone does not establish worker eligibility.')+
+        (source?`\n${language==='hi'?'स्रोत':'Source'}: ${source.title}, ${source.locator} — ${source.url}`:'')+'\n'+currentQuestion(next);
     }
 
     if ((state?.phase === 'language' || !languageByChat.has(chatId)) && schemeFromText(text) && topicFor(text)) {
@@ -287,7 +354,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       const language = requestedLanguage(text, true);
       if (!language) {
         questionnaireByChat.set(chatId, { phase: 'language' });
-        return languagePrompt();
+        return languagePrompt(naturalFlow);
       }
       return beginProfile(chatId, language);
     }
@@ -298,7 +365,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       if (state?.phase === 'role') {
         const next = { ...state, language };
         questionnaireByChat.set(chatId, next);
-        return `${intro(language)}\n\n${rolePrompt(language)}`;
+        return `${intro(language,naturalFlow)}\n\n${rolePrompt(language)}`;
       }
       if (state?.phase === 'questions') {
         const next = { ...state, language };
@@ -308,7 +375,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       return language === 'hi' ? 'ठीक है। नया सुझाव शुरू करने के लिए START लिखें।' : 'Okay. Send START to begin a new suggestion.';
     }
 
-    if ((/^cancel$/iu.test(value) || (state?.phase === 'questions' && state.language === 'hi' && value === '5')) && state) {
+    if ((/^cancel$/iu.test(value) || (state?.phase === 'questions' && value === '5')) && state) {
       questionnaireByChat.delete(chatId);
       return state.language === 'hi' ? 'सवाल-जवाब रोक दिया गया। आपकी प्रोफ़ाइल इस सत्र से हटा दी गई।' : 'Questionnaire cancelled. Your profile has been cleared from this session.';
     }
@@ -348,18 +415,19 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
         questionnaireByChat.set(chatId, next);
         return rolePrompt(state.language);
       }
-      if (value === 'back' || (state.language === 'hi' && value === '3')) {
+      if (value === 'back' || value === '3') {
         if (state.index === 0) return currentQuestion(state);
         const next = { ...state, index: state.index - 1 };
         questionnaireByChat.set(chatId, next);
         return currentQuestion(next);
       }
-      const hindiChoice = state.language === 'hi' ? { '1': true, '2': false, '4': null } : {};
-      const answer = Object.hasOwn(hindiChoice, value) ? hindiChoice[value] : parseYesNo(text);
+      const numericChoice = { '1': true, '2': false, '4': null };
+      const answer = Object.hasOwn(numericChoice, value) ? numericChoice[value] : parseYesNo(text);
       if (answer === undefined) return currentQuestion(state, true);
       const step = questionSets[state.role][state.index];
       const profile = { ...state.profile, [step.key]: answer };
-      const nextIndex = state.index + 1;
+      let nextIndex = state.index + 1;
+      while(nextIndex < questionSets[state.role].length && typeof profile[questionSets[state.role][nextIndex].key]==='boolean')nextIndex++;
       if (nextIndex < questionSets[state.role].length) {
         const next = { ...state, profile, index: nextIndex };
         questionnaireByChat.set(chatId, next);
@@ -372,7 +440,9 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       try {
         const result = answers.recommend({ profile, language: state.language });
         if(result.results?.length)awaitingCscOffer.set(chatId,now()+300000);
-        return formatRecommendation(result, state.language)+(result.results?.length?'\n\n'+cscOffer(state.language):'');
+        const another=naturalFlow && state.role==='farmer' && result.results?.length && (passages??loadPassages()).some(p=>p.scheme_id==='pm-sym' && p.id==='pm-sym-ministry-note-2025:2');
+        if(another)moreSchemeByChat.set(chatId,'pm-sym');
+        return formatRecommendation(result, state.language)+(result.results?.length?'\n\n'+cscOffer(state.language):'')+(another?'\n\n'+moreHint(state.language):'');
       } catch {
         return state.language === 'hi' ? 'सुझाव सेवा अभी उपलब्ध नहीं है। बाद में फिर कोशिश करें।' : 'The recommendation service is unavailable. Please try again later.';
       }
@@ -391,10 +461,12 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     if (awaitingCsc.get(chatId) > now() && String(text ?? '').trim()) return true;
     if (awaitingCscOffer.get(chatId) > now() && String(text ?? '').trim()) return true;
     const phase = questionnaireByChat.get(chatId)?.phase;
-    if((phase || saved(chatId)) && /^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next|cancel)$/iu.test(normalize(text)))return true;
-    if (phase === 'language') return ['1', '2'].includes(normalize(text));
-    return (phase === 'role' || phase === 'questions') && Boolean(String(text ?? '').trim());
+    if((phase || saved(chatId)) && /^(?:stop|delete|resume|save|alerts on|alerts off|role|edit [1-6]|next|more|cancel)$/iu.test(normalize(text)))return true;
+    if (phase === 'language') return ['1', '2'].includes(normalize(text)) || (naturalFlow && isProfileStatement(text));
+    if (naturalFlow && phase === 'natural_confirm') return String(text ?? '').trim().length>0;
+    if (naturalFlow && phase === 'income_period') return String(text ?? '').trim().length>0;
+    return ['role','questions','natural_confirm','income_period'].includes(phase) && Boolean(String(text ?? '').trim());
   }
 
-  return { handle, answerQuestion, acceptsBareQuestionnaireReply, choosingLanguage: chatId => questionnaireByChat.get(chatId)?.phase === 'language', selectedLanguage: chatId => ['role','questions'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
+  return { handle, handleProfileStatement, isProfileStatement: text=>naturalFlow && isProfileStatement(text), answerQuestion, acceptsBareQuestionnaireReply, choosingLanguage: chatId => questionnaireByChat.get(chatId)?.phase === 'language', selectedLanguage: chatId => ['role','questions','natural_confirm','income_period'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
 }

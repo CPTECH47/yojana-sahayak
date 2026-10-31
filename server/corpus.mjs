@@ -5,6 +5,13 @@ import { fileURLToPath } from 'node:url';
 const corpusPath = fileURLToPath(new URL('../corpus/passages.json', import.meta.url));
 const manifestPath = fileURLToPath(new URL('../corpus/manifest.json', import.meta.url));
 const ignored = new Set(['the', 'a', 'an', 'is', 'are', 'does', 'do', 'how', 'what', 'which', 'who', 'for', 'of', 'in', 'on', 'to', 'and', 'or', 'with', 'my', 'i', 'me', 'can', 'get', 'scheme', 'yojana', 'please', 'about']);
+// Small reviewed vocabulary bridges Hindi questions to English source passages.
+const bilingualTerms = Object.freeze({
+  किसान:['farmer'], खेती:['farmer','land'], जमीन:['land'], लाभ:['benefit'], राशि:['amount','benefit'],
+  पैसा:['amount'], रुपये:['amount'], किस्त:['instalment'], पेंशन:['pension'], आय:['income'],
+  दस्तावेज:['document'], कागज:['document'], पात्र:['eligible'], योग्यता:['eligible'], आवेदन:['application'],
+  सालाना:['annual'], मासिक:['monthly'], उम्र:['age'], महिला:['woman'], कामगार:['worker'], मजदूर:['worker'],
+});
 
 export const schemes = Object.freeze({
   'pm-kisan': { name: 'PM-KISAN', aliases: [/pm[\s-]?kisan/i, /पीएम[\s-]?किसान/u, /प्रधानमंत्री किसान/u] },
@@ -48,7 +55,8 @@ export function loadPassages(asOf = new Date()) {
 }
 
 function tokens(text) {
-  return [...new Set((text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter(word => word.length > 2 && !ignored.has(word)))];
+  const words=(text.toLowerCase().match(/[\p{L}\p{M}\p{N}]+/gu) ?? []).filter(word => word.length > 2 && !ignored.has(word));
+  return [...new Set(words.flatMap(word=>[word,...(bilingualTerms[word]||[])]))];
 }
 
 export function retrieve(passages, query, schemeId, limit = 3) {

@@ -1,9 +1,9 @@
 // A confirmed transcript may answer an active questionnaire or ask a question.
 function spokenChoice(text) {
   const normalized=String(text).trim().toLocaleLowerCase().replace(/[.!?।,]/gu,'').trim();
-  return ({one:'1',two:'2',three:'3',four:'4',five:'5',six:'6',ek:'1',do:'2','एक':'1','दो':'2','तीन':'3','चार':'4','पांच':'5','पाँच':'5','छह':'6','१':'1','२':'2','३':'3','४':'4','५':'5','६':'6'})[normalized] || normalized;
+  return ({one:'1',two:'2',three:'3',four:'4',five:'5',six:'6',seven:'7',ek:'1',do:'2','एक':'1','दो':'2','तीन':'3','चार':'4','पांच':'5','पाँच':'5','छह':'6','सात':'7','१':'1','२':'2','३':'3','४':'4','५':'5','६':'6','७':'7'})[normalized] || normalized;
 }
-export function createVoiceFlow({ answers, transcribe, fallback, answerQuestion=null, isQuestionnaireReply=()=>false, selectedLanguage=()=>null, choosingLanguage=()=>false, now=Date.now, diagnostic=()=>{} }) {
+export function createVoiceFlow({ answers, transcribe, fallback, answerQuestion=null, profileStatement=null, isProfileStatement=()=>false, isQuestionnaireReply=()=>false, selectedLanguage=()=>null, choosingLanguage=()=>false, now=Date.now, diagnostic=()=>{} }) {
   const states=new Map();
   const current=id=>{const s=states.get(id);if(s && s.expires<now()){states.delete(id);return null;}return s;};
   const processing=process.env.YOJANA_STT_PROVIDER==='sarvam'
@@ -22,14 +22,15 @@ export function createVoiceFlow({ answers, transcribe, fallback, answerQuestion=
         let result;
         try { result=await transcribe(audio,{language:selectedLanguage(id)}); }
         catch(error) { if(!languageMenu || !['unsupported detected language','empty or invalid transcript'].includes(error?.message)) throw error; }
-        if(languageMenu && (!result || !['1','2'].includes(spokenChoice(result.text)))) {
+        if(languageMenu && (!result || (!['1','2'].includes(spokenChoice(result.text)) && !isProfileStatement(result.text)))) {
           diagnostic('retrying language choice in Hindi');
           result=await transcribe(audio,{language:'hi'});
         }
-        if(languageMenu && !['1','2'].includes(spokenChoice(result.text))) return 'Could not identify option 1 or 2. Please type 1 for Hindi or 2 for English.\nविकल्प स्पष्ट नहीं है। हिंदी के लिए 1 या अंग्रेज़ी के लिए 2 लिखें।';
+        if(languageMenu && !['1','2'].includes(spokenChoice(result.text)) && !isProfileStatement(result.text)) return 'Could not identify option 1 or 2. Please type 1 for Hindi or 2 for English.\nविकल्प स्पष्ट नहीं है। हिंदी के लिए 1 या अंग्रेज़ी के लिए 2 लिखें।';
+        const choiceMenu=languageMenu && ['1','2'].includes(spokenChoice(result.text));
         diagnostic('transcription ready for confirmation');
-        states.set(id,{phase:'confirm',...result,languageMenu,expires:now()+300000});
-        if(languageMenu) return spokenChoice(result.text)==='1'
+        states.set(id,{phase:'confirm',...result,languageMenu:choiceMenu,expires:now()+300000});
+        if(choiceMenu) return spokenChoice(result.text)==='1'
           ? `I heard: ${result.text}\nOption 1 selects *Hindi / हिंदी*. Reply *1* to confirm or *2* to record again. To fix the words, send YOJANA EDIT followed by the correction.\nविकल्प 1 से हिंदी चुनी जाएगी।`
           : `I heard: ${result.text}\nOption 2 selects *English / अंग्रेज़ी*. Reply *1* to confirm or *2* to record again. To fix the words, send YOJANA EDIT followed by the correction.\nविकल्प 2 से अंग्रेज़ी चुनी जाएगी।`;
         return result.language==='hi'
@@ -62,7 +63,8 @@ export function createVoiceFlow({ answers, transcribe, fallback, answerQuestion=
         try {
           if(state.languageMenu && !choosingLanguage(id)) return 'The menu changed. Please send YOJANA START and choose again.\nमेनू बदल गया है। कृपया फिर से शुरू करें।';
           const choice=spokenChoice(state.text);
-          if (isQuestionnaireReply(id, choice) && /^(?:[1-6]|yes|no|हाँ|हां|नहीं|नही|जी|ना|skip)$/iu.test(choice)) return await fallback(id,choice);
+          if (isQuestionnaireReply(id, choice) && /^(?:[1-7]|yes|no|हाँ|हां|नहीं|नही|जी|ना|skip)$/iu.test(choice)) return await fallback(id,choice);
+          if(profileStatement && isProfileStatement(state.text)) return await profileStatement(id,state.text,state.language);
           if(answerQuestion)return await answerQuestion(id,state.text,state.language);
           const result=await answers.chat({question:state.text,language:state.language});
           const label=state.language==='hi'?'स्रोत':'Source';
