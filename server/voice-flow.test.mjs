@@ -29,3 +29,13 @@ test('cancelled, expired and failed voice questions are not submitted',async()=>
   const failing=createVoiceFlow({fallback:async()=>'',transcribe:async()=>{throw Error();},answers:{}});
   await failing.handle('x','voice');assert.match(await failing.handleAudio('x',Buffer.from('fake')),/could not be transcribed/);
 });
+
+test('voice notes in an active conversation work without the voice command and require confirmation',async()=>{
+  let submitted=0;
+  const flow=createVoiceFlow({fallback:async()=>{submitted++;return 'next question'},isQuestionnaireReply:()=>true,transcribe:async()=>({text:'हाँ',language:'hi'}),answers:{}});
+  assert.equal(await flow.handleAudio('personal-chat',Buffer.from('fake')),null);
+  assert.match(await flow.handleAudio('active-chat',Buffer.from('fake'),true),/YOJANA CONFIRM/);
+  assert.equal(submitted,0);
+  assert.equal(await flow.handle('active-chat','confirm'),'next question');
+  assert.equal(submitted,1);
+});

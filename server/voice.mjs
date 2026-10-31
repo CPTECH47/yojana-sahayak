@@ -12,19 +12,26 @@ export function transcribeVoice(audio, { python = process.env.YOJANA_VOICE_PYTHO
   if (!Buffer.isBuffer(audio) || !audio.length || audio.length > 10 * 1024 * 1024) return Promise.reject(new Error('Invalid audio'));
   return new Promise((resolve, reject) => {
     const child = spawn(python, [script], { stdio:['pipe','pipe','pipe'], windowsHide:true });
-    let output = '', settled = false;
+    let output = '', diagnostics = '', settled = false;
     const timer = setTimeout(() => { child.kill(); finish(new Error('Voice transcription timed out')); }, timeoutMs);
     function finish(error, value) { if (settled) return; settled=true; clearTimeout(timer); error ? reject(error) : resolve(value); }
     child.stdout.on('data', chunk => { output += chunk.toString('utf8'); if (output.length > 8192) { child.kill(); finish(new Error('Invalid transcription')); } });
-    child.stderr.resume(); // Never log potentially sensitive voice data.
+    child.stderr.on('data', chunk => { if(diagnostics.length<8192) diagnostics += chunk.toString('utf8').slice(0,8192); });
     child.on('error', error => finish(error));
     child.on('close', code => {
-      if (code !== 0) return finish(new Error('Voice transcription unavailable'));
+      if (code !== 0) {
+        const stage = /VOICE_STAGE=(input|model|decode|inference)/.exec(diagnostics)?.[1];
+        const kind = /VOICE_TYPE=(RuntimeError|ValueError|TypeError|OSError|AttributeError|ModuleNotFoundError|ImportError|IndexError)/.exec(diagnostics)?.[1];
+        if (stage && kind) console.log(`Voice status: worker ${stage} exception ${kind}`);
+        return finish(new Error(stage ? `voice worker ${stage} failed` : 'Voice transcription unavailable'));
+      }
       try {
         const result=JSON.parse(output);
-        if (typeof result.text !== 'string' || !result.text.trim() || result.text.length > 1000 || !['hi','en'].includes(result.language) || !Number.isFinite(result.confidence) || result.confidence < 0.7) throw Error();
-        finish(null, { text:result.text.trim(), language:result.language });
-      } catch { finish(new Error('Speech could not be identified reliably')); }
+        if (typeof result.text !== 'string' || !result.text.trim() || result.text.length > 1000) return finish(new Error('empty or invalid transcript'));
+        if (!['hi','en'].includes(result.language)) return finish(new Error('unsupported detected language'));
+        if (!Number.isFinite(result.confidence)) return finish(new Error('invalid worker response'));
+        finish(null, { text:result.text.trim(), language:result.language, languageUncertain:result.confidence < 0.7 });
+      } catch { finish(new Error('invalid worker response')); }
     });
     child.stdin.on('error', () => {});
     child.stdin.end(audio);

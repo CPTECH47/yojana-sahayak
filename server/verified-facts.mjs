@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { passageDigest } from './corpus.mjs';
 const records = JSON.parse(readFileSync(new URL('../corpus/answer-records.json', import.meta.url), 'utf8')).records;
 const ruleEvidence = JSON.parse(readFileSync(new URL('../corpus/rule-evidence-lock.json', import.meta.url), 'utf8'));
+// Tejas observed a conflicting current NSP listing; retain provenance but withhold disputed dates pending review.
+const quarantinedEvidence = new Set(['nmms-2026-notice:1', 'nsp-scholarships-2026:1']);
 export function ruleEvidenceMatches(passage) {
   return ruleEvidence[passage.id] === passageDigest(passage);
 }
@@ -11,7 +13,7 @@ export function supportedRecords(passages) {
   const byId = new Map(passages.map(p => [p.id, p]));
   return records.filter(record => {
     const passage = byId.get(record.evidence_id);
-    return passage && passageDigest(passage) === record.passage_sha256 && passage.scheme_id === record.scheme_id;
+    return !quarantinedEvidence.has(record.evidence_id) && passage && passageDigest(passage) === record.passage_sha256 && passage.scheme_id === record.scheme_id;
   });
 }
 

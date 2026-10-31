@@ -357,5 +357,5 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     return (phase === 'role' || phase === 'questions') && Boolean(String(text ?? '').trim());
   }
 
-  return { handle, acceptsBareQuestionnaireReply };
+  return { handle, acceptsBareQuestionnaireReply, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
 }

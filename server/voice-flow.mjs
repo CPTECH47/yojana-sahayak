@@ -1,20 +1,26 @@
 // Voice is explicitly enabled per chat; only a confirmed transcript becomes a question.
-export function createVoiceFlow({ answers, transcribe, fallback, now=Date.now }) {
+export function createVoiceFlow({ answers, transcribe, fallback, isQuestionnaireReply=()=>false, now=Date.now, diagnostic=()=>{} }) {
   const states=new Map();
   const current=id=>{const s=states.get(id);if(s && s.expires<now()){states.delete(id);return null;}return s;};
   const prompt='Send one short Hindi or English voice question. Confirm the transcription before I answer. Voice is processed locally. Do not send Aadhaar, bank details or other private information.\nहिंदी या अंग्रेज़ी में छोटा आवाज़ वाला सवाल भेजें। जवाब से पहले लिखी हुई बात की पुष्टि करें। आधार या बैंक जानकारी न भेजें।';
   return {
     acceptsAudio(id){return current(id)?.phase==='audio';},
-    async handleAudio(id, audio){
-      if(!this.acceptsAudio(id))return null;
+    async handleAudio(id, audio, activeConversation=false){
+      if(!activeConversation && !this.acceptsAudio(id))return null;
       states.delete(id);
       try {
+        diagnostic('transcription started');
         const result=await transcribe(audio);
+        diagnostic('transcription ready for confirmation');
         states.set(id,{phase:'confirm',...result,expires:now()+300000});
         return result.language==='hi'
-          ? `मैंने सुना: ${result.text}\nसही है तो YOJANA CONFIRM भेजें। गलत है तो YOJANA CANCEL भेजें और फिर से रिकॉर्ड करें।`
-          : `I heard: ${result.text}\nSend YOJANA CONFIRM if correct. If not, send YOJANA CANCEL and record again.`;
-      } catch {return 'Voice could not be transcribed reliably. Send YOJANA VOICE to try again, or type your question.\nआवाज़ स्पष्ट नहीं समझी गई। दोबारा कोशिश करें या सवाल लिखकर भेजें।';}
+          ? `मैंने सुना (हिंदी): ${result.text}\nशब्द और भाषा सही हों तो YOJANA CONFIRM भेजें। गलत हो तो YOJANA CANCEL भेजें और फिर से रिकॉर्ड करें।`
+          : `I heard (English): ${result.text}\nSend YOJANA CONFIRM if the words and language are correct. Otherwise send YOJANA CANCEL and record again.`;
+      } catch (error) {
+        const safe=['empty or invalid transcript','unsupported detected language','low language confidence','invalid worker response','Voice transcription unavailable','Voice transcription timed out','voice worker input failed','voice worker model failed','voice worker decode failed','voice worker inference failed'];
+        diagnostic('transcription failed: '+(safe.includes(error?.message)?error.message:'worker error'));
+        return 'Voice could not be transcribed reliably. Please record again or type your question.\nआवाज़ स्पष्ट नहीं समझी गई। दोबारा रिकॉर्ड करें या सवाल लिखकर भेजें।';
+      }
     },
     async handle(id,text){
       const command=String(text).trim().toLowerCase(); const state=current(id);
@@ -23,6 +29,7 @@ export function createVoiceFlow({ answers, transcribe, fallback, now=Date.now })
       if(state?.phase==='confirm' && command==='confirm'){
         states.delete(id);
         try {
+          if (isQuestionnaireReply(id, state.text) && /^(?:yes|no|हाँ|हां|नहीं|नही|जी|ना|skip)$/iu.test(state.text.trim())) return await fallback(id,state.text);
           const result=await answers.chat({question:state.text,language:state.language});
           const label=state.language==='hi'?'स्रोत':'Source';
           const links=(result.citations || []).map(c=>`${label}: ${c.title}, ${c.locator} — ${c.url}`).join('\n');

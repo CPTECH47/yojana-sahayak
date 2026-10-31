@@ -35,6 +35,7 @@ app.use(express.json({ limit: '32kb' }));
 
 // Public catalogue contains only records whose source is still approved and unexpired.
 app.get('/api/catalog', (_request, response) => {
+  response.set('Cache-Control', 'no-store');
   try {
     const passages = getPassages();
     const byId = new Map(passages.map(p => [p.id, p]));
@@ -42,7 +43,7 @@ app.get('/api/catalog', (_request, response) => {
       const source = byId.get(r.evidence_id);
       return { scheme_id:r.scheme_id, topics:r.topics, en:r.en, hi:r.hi, source:{ title:source.title, locator:source.locator, url:source.url } };
     });
-    response.json({ schemes:Object.entries(schemes).map(([id, s]) => ({id,name:s.name})), records });
+    response.json({ generated_at:new Date().toISOString(), refresh_after_ms:60000, schemes:Object.entries(schemes).map(([id, s]) => ({id,name:s.name})), records });
   } catch { response.status(503).json({status:'error',reason_code:'corpus_unavailable'}); }
 });
 
@@ -107,11 +108,18 @@ app.get('/api/prep-status', async (_request, response) => {
   }
 });
 
+app.get('/start-whatsapp', (_request,response) => {
+  const configured=process.env.YOJANA_WHATSAPP_NUMBER || '918273104167';
+  if (!/^\d{10,15}$/.test(configured)) return response.status(503).send('WhatsApp destination is not configured.');
+  response.set('Cache-Control','no-store');
+  return response.redirect('https://wa.me/'+configured+'?text=YOJANA%20START');
+});
 app.use(express.static(path.join(root, 'dist')));
 app.use((request, response) => {
   if (request.path.startsWith('/api/')) {
     return response.status(404).json({ ok: false, message: 'Unknown API route.' });
   }
+  if (request.path.startsWith('/assets/') || path.extname(request.path)) return response.status(404).send('Not found');
   return response.sendFile(path.join(root, 'dist', 'index.html'));
 });
 app.use((error,_request,response,_next)=>{

@@ -14,13 +14,17 @@ import { createDelivery } from './delivery.mjs';
 import { scanReviewedUpdates, deliverReviewedAlerts } from './alerts.mjs';
 import { transcribeVoice } from './voice.mjs';
 import { createVoiceFlow } from './voice-flow.mjs';
+import { messageContent, messageText } from './whatsapp-content.mjs';
+import { installSafeSignalLogging } from './safe-signal-logging.mjs';
+
+installSafeSignalLogging(console);
 
 const authDir = process.env.YOJANA_AUTH_DIR ? resolve(process.env.YOJANA_AUTH_DIR) : fileURLToPath(new URL('./.baileys-auth/', import.meta.url));
 const authLock = openLocalStore(join(authDir,'.owner'));
 const store = openLocalStore(resolve(process.env.YOJANA_STATE_DIR || '.runtime/whatsapp'));
 const answers = createAnswerService();
 const conversation = createWhatsAppConversation({ answers, store });
-const voice = createVoiceFlow({ answers, transcribe:transcribeVoice, fallback:conversation.handle });
+const voice = createVoiceFlow({ answers, transcribe:transcribeVoice, fallback:conversation.handle, isQuestionnaireReply:conversation.acceptsBareQuestionnaireReply, diagnostic:event=>console.log('Voice status: '+event) });
 const pendingVoice = new Map();
 let currentSocket, reconnectTimer, stopped=false, attempts=0;
 const send=async(chat,text)=>{
@@ -30,7 +34,7 @@ const send=async(chat,text)=>{
 const deliver=createDelivery({store,handle:async (chat,text)=>{
   if(text.startsWith('__VOICE_AUDIO__:')){
     const key=text.slice('__VOICE_AUDIO__:'.length);const audio=pendingVoice.get(key);pendingVoice.delete(key);
-    return audio ? (await voice.handleAudio(chat,audio) || 'Voice session expired. Send YOJANA VOICE to try again.') : 'Voice message unavailable. Please try again.';
+    return audio ? (await voice.handleAudio(chat,audio,conversation.hasActiveConversation(chat)) || 'Send YOJANA START to begin.') : 'Voice message unavailable. Please try again.';
   }
   return voice.handle(chat,text);
 },send});
@@ -42,11 +46,6 @@ const alertTimer=setInterval(async()=>{
 },5*60*1000);
 function stop(){stopped=true;clearTimeout(reconnectTimer);clearInterval(alertTimer);currentSocket?.end(new Error('Operator stopped'));store.close();authLock.close();process.exitCode=0;}
 process.once('SIGINT',stop);process.once('SIGTERM',stop);
-
-function messageText(message) {
-  const content = message.message?.ephemeralMessage?.message ?? message.message;
-  return content?.conversation ?? content?.extendedTextMessage?.text ?? '';
-}
 
 async function start() {
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
@@ -101,10 +100,12 @@ async function start() {
       if (message.key.fromMe || !jid || jid.endsWith('@g.us') || !id) continue;
       const rawText = messageText(message);
       const command = demoCommand(rawText);
-      const content=message.message?.ephemeralMessage?.message ?? message.message;
+      if(command?.trim().toLowerCase()==='voice') console.log('Voice status: request received');
+      const content=messageContent(message);
       const audio=content?.audioMessage;
+      if(audio) console.log('Voice status: audio received');
       let text;
-      if(audio && voice.acceptsAudio(jid)){
+      if(audio && (voice.acceptsAudio(jid) || conversation.hasActiveConversation(jid))){
         const length=Number(audio.fileLength), seconds=Number(audio.seconds);
         if(!Number.isFinite(length) || length<1 || length>10*1024*1024 || !Number.isFinite(seconds) || seconds>60){
           await socket.sendMessage(jid,{text:'Please send a voice question shorter than one minute.'}); continue;
@@ -112,8 +113,9 @@ async function start() {
         try {
           const bytes=await downloadMediaMessage(message,'buffer',{}, {logger:pino({level:'silent'}),reuploadRequest:socket.updateMediaMessage});
           if(!Buffer.isBuffer(bytes) || bytes.length>10*1024*1024)throw Error();
+          console.log('Voice status: audio downloaded');
           const key=store.id(jid+':'+id);pendingVoice.set(key,bytes);text='__VOICE_AUDIO__:'+key;
-        } catch {await socket.sendMessage(jid,{text:'Voice download failed. Please try again or send a text question.'});continue;}
+        } catch {console.log('Voice status: audio download failed');await socket.sendMessage(jid,{text:'Voice download failed. Please try again or send a text question.'});continue;}
       } else {
         if (command === null && !conversation.acceptsBareQuestionnaireReply(jid, rawText)) continue;
         text = command ?? rawText.trim();

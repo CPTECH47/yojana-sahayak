@@ -65,3 +65,13 @@
 
 - WhatsApp integration calls `answers.chat({ question, language })`, where language is `hi` or `en`.
 - Answer citations retain `title`, `locator`, and `url`; no `/api/chat` or `/api/recommend` response fields changed in this update.
+
+## 31 October: voice and website audit follow-up
+
+- Voice: accept notes within an active bot conversation without a VOICE command; transcription still requires confirmation. A real phone note reached confirmation, but Whisper small misheard PM-KISAN as “PMG sound”; do not present voice accuracy as solved. The larger turbo model is downloading and has not been benchmarked or enabled. Phone processing time was not measured.
+- Privacy: suppress known libsignal diagnostics that can expose session material. A previous diagnostic printed session material in tool output; relink the device after testing. Never commit linked-device state or recordings.
+- Website: quarantine the two disputed scholarship deadline records until data review; refresh catalogue every minute and on return/online, fail closed on refresh errors, offer retry and official links, remember language, improve Hindi labels, clarify the WhatsApp handoff, centralize the configured WhatsApp redirect, and return 404 for missing assets. PDF page fragments are used only where the locator explicitly identifies a PDF page.
+- Files: `client/scheme-site.jsx`, `index.html`, `scripts/transcribe_voice.py`, `server/index.js`, `server/verified-facts.mjs`, `server/catalog.test.mjs`, `server/voice*.mjs`, `server/whatsapp*.mjs`, `server/safe-signal-logging*.mjs`.
+- Checks: `npm.cmd test` 45/45 passed; `npm.cmd run build` passed; `git diff --check` passed. The phone test reached a transcription confirmation, but the recognized scheme was incorrect. Do not claim the full voice-to-cited-answer flow has passed on a phone.
+- Remaining: Pulkit must review the current NSP deadline and PMUY Hindi application guidance; Tejas must verify mobile presentation, browser failure/refresh cases, source links, WhatsApp, and accessibility. Automatic freshness behavior has not been manually tested by withdrawing a source in a real browser. Turbo, GPU execution, Hindi/English accuracy and latency are unverified. No public deployment was tested.
+- API: `GET /api/catalog` includes `generated_at`, `refresh_after_ms`, `schemes`, `records` and `Cache-Control: no-store`; chat/recommend contracts unchanged. `/start-whatsapp` redirects to `YOJANA_WHATSAPP_NUMBER` (digits with country code) or the explicitly approved demo number.
