@@ -109,3 +109,9 @@
 
 - Added `server/sarvam-voice.mjs` and provider routing through `server/voice.mjs`. `YOJANA_STT_PROVIDER=sarvam` plus a private `SARVAM_API_KEY` selects Saaras v4; unset/default remains local. The existing Baileys text path and `/api/chat`/`/api/recommend` contracts are unchanged. Selected language is sent as `hi-IN` or `en-IN`; otherwise Sarvam detects it. The bot still confirms the transcript before questionnaire changes. Sarvam voice notes are limited to 30 seconds and the prompt discloses remote processing.
 - `server/sarvam-voice.test.mjs` verifies request shape, response mapping and failures with a mocked API. Real Sarvam credentials, billing balance, phone transcription and latency have not been tested. The local real-phone failure remains unresolved; a synthetic WAV succeeded, so it is not yet proven to be solely a model accuracy issue. User needs a Sarvam account/key to test the alternative. No secrets were committed.
+
+### Live Sarvam setup follow-up
+
+- Charchit created a Sarvam account and configured its API key in the ignored local `.env`; no credential was committed or printed by the test command. The existing JavaScript `fetch` adapter is used, so no Sarvam SDK was installed.
+- A single synthetic OGG clip passed through the real Saaras v4 API: response language `en`, transcript `One.`, wall time about 0.8 s. This validates the request shape and account access, not Hindi accuracy.
+- The restarted Baileys process connected. During the paired-phone test it reported: audio received, audio downloaded, transcription started, transcription ready for confirmation, reply sent. The exact Hindi transcript and user confirmation are pending user feedback; do not claim recognition accuracy yet. No API contract changed.
