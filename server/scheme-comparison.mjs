@@ -73,25 +73,32 @@ export function createSchemeComparison({ answers, now = Date.now, onResults = ()
     state.pending = null;
     onResults(state.id, { role: state.role, profiles: structuredClone(state.profiles) });
     const hi = state.language === 'hi';
-    const lines = [hi ? 'जाँची गई योजनाओं की शुरुआती तुलना' : 'Preliminary comparison of reviewed schemes'];
-    for (const item of response.results) {
-      const counts = item.condition_counts;
-      const label = item.status === 'potential_match' ? (hi ? 'संभावित मेल' : 'Possible match')
-        : item.status === 'not_matched' ? (hi ? 'बताई गई शर्त मेल नहीं खाती' : 'Reported condition did not match')
-          : (hi ? 'और जानकारी चाहिए' : 'More information needed');
-      lines.push(`\n*${item.scheme_name}* — ${label}`);
-      lines.push(hi ? `चुनी शर्तें: ${counts.met}/${counts.total} मेल, ${counts.failed} विफल, ${counts.unknown} अज्ञात।`
-        : `Selected conditions: ${counts.met}/${counts.total} met, ${counts.failed} failed, ${counts.unknown} unknown.`);
-      if (item.status === 'not_matched') lines.push(...item.reasons);
-      if (item.scope_note) lines.push(item.scope_note);
-      if(item.missing_fields.length)lines.push(hi?'बाकी शर्तों के लिए NEXT भेजें।':'Send NEXT for the remaining conditions.');
-      for (const source of item.citations) lines.push(`${source.title}, ${source.locator} — ${source.url}`);
+    // Keep every comparison in the session/API; present only the highest ranked
+    // non-excluded result. Unknown answers never become a possible match.
+    const item=response.results.find(result=>result.status!=='not_matched');
+    const lines=[];
+    if(item){
+      const matched=item.status==='potential_match';
+      lines.push(`*${item.scheme_name}*`);
+      lines.push(hi?(matched?'• संभावित मेल — आपके जवाब जाँची गई शर्तों से मेल खाते हैं।':'• और जानकारी चाहिए — कुछ शर्तों के जवाब बाकी हैं।')
+        :(matched?'• Possible match — your answers meet the selected checks.':'• More information needed — some conditions are still unanswered.'));
+      if(item.scope_note)lines.push('• '+item.scope_note);
+      if(!matched)lines.push(hi?'• बाकी सवालों के लिए *YOJANA NEXT* भेजें।':'• Send *YOJANA NEXT* to answer the remaining questions.');
+      const sources=new Map();
+      for(const source of item.citations){
+        const key=source.title+'\n'+source.url;
+        if(!sources.has(key))sources.set(key,{...source,locators:[]});
+        const group=sources.get(key);
+        if(source.locator && !group.locators.includes(source.locator))group.locators.push(source.locator);
+      }
+      lines.push(hi?'• शुरुआती मार्गदर्शन है; पूरी पात्रता की पुष्टि आधिकारिक कार्यालय से करें।':'• Preliminary guidance. Confirm full eligibility with the official office.');
+      for(const source of sources.values())lines.push(`${hi?'• स्रोत':'• Source'}: ${source.title}${source.locators.length?', '+source.locators.join(', '):''} — ${source.url}`);
+    }else{
+      lines.push(hi?'जाँची गई जानकारी से अभी कोई उपयुक्त योजना नहीं मिली।':'I could not identify a suitable scheme from the reviewed checks.');
+      if(response.unavailable_schemes.length)lines.push(hi?'कुछ योजनाओं के जाँचे गए स्रोत उपलब्ध नहीं हैं।':'Reviewed evidence is unavailable for some schemes.');
+      lines.push(hi?'जानकारी सुधारें या दूसरी योजनाओं के लिए आधिकारिक कार्यालय से पूछें।':'Correct any mistaken details or ask the official office about other schemes.');
     }
-    if (response.unavailable_schemes.length) lines.push(hi ? 'कुछ योजनाओं के जाँचे गए नियम अभी उपलब्ध नहीं हैं।' : 'Reviewed rules are unavailable for some schemes.');
-    lines.push(hi ? '\nयह चुनी शर्तों की जाँच है; सरकारी मंजूरी की संभावना नहीं। अंतिम पुष्टि आधिकारिक कार्यालय से करें।'
-      : '\nThese counts describe selected checks. They are not a probability of government approval. Confirm full eligibility with the official office.');
-    lines.push(hi ? '*YOJANA START* से फिर शुरू करें। NEXT से छूटे जवाब दें। EDIT और सवाल का नंबर भेजकर सुधारें। CSC से केंद्र खोजें।'
-      : '*YOJANA START* to restart. NEXT answers skipped questions. EDIT and a question number corrects an answer. CSC finds service-centre help.');
+    lines.push(hi?'फिर शुरू करें: *YOJANA START*':'Start again: *YOJANA START*');
     return lines.join('\n');
   }
   function handle(id, text, language) {

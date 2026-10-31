@@ -1,5 +1,10 @@
 # Server integration handoff
 
+## Short WhatsApp result — 31 October 2026
+
+- The final comparison reply now presents only the highest-ranked non-excluded scheme with a brief possible-match or needs-information status. Other schemes, condition counts and calculations stay in session/API results. Duplicate source links are grouped with their locators; full policy scope notes remain. All-excluded checks produce a short no-suitable-scheme response. CSC consent and location handling still follow the result.
+- Files: `server/scheme-comparison.mjs`, its test, `server/national-coverage.test.mjs`, `docs/MULTI_SCHEME_AND_DAILY_REVIEW.md` and this handoff. `npm.cmd test`: 113/113 passed, including internal ranking retention, grouped citations, all-excluded cases, corrections and result → CSC consent → location. No API fields changed. A fresh phone result remains for Charchit's manual check after bot restart.
+
 ## PR #10 integration — 31 October 2026
 
 - Integrated Tejas head `8b0667a` with captain discovery commit `07b21c2`. Six reviewed-rule schemes and 13 usable documents now reach the local bot. Source/rule review found no mismatch in the added policy summaries; their manifest still records assistant review and pending independent team review before public release. Unapproved PMFBY candidates remain outside factual answers.

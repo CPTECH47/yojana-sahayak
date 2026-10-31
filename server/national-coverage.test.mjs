@@ -59,7 +59,9 @@ test('each role completes its own fictional profile in one-question turns and pr
     assert.ok(result.includes(schemes[profile.scheme_id].name));
     assert.match(await flow.handle('fictional','EDIT 1'), /\n1\./u);
     await flow.handle('fictional','2');
-    assert.match(await flow.handle('fictional','RESULTS'), /Reported condition did not match/u);
+    const corrected=await flow.handle('fictional','RESULTS');
+    assert.equal(corrected.includes('*'+schemes[profile.scheme_id].name+'*'),false);
+    assert.match(corrected,/More information needed|could not identify a suitable scheme/u);
   }
 });
 

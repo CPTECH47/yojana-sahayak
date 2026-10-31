@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAnswerService } from './answer-service.mjs';
 import { createWhatsAppConversation } from './whatsapp-flow.mjs';
-import { compareProfiles } from './scheme-comparison.mjs';
+import { compareProfiles, createSchemeComparison } from './scheme-comparison.mjs';
 
 const service = createAnswerService();
 test('multiple profiles rank sourced matches ahead of unknown and failed checks', () => {
@@ -59,9 +59,10 @@ test('Hindi comparison skips excluded schemes, keeps unknowns and supports corre
   assert.match(await flow.handle('sample', '2'), /महिला/u);
   await flow.handle('sample', '4'); await flow.handle('sample', '4');
   const result = await flow.handle('sample', '4');
-  assert.match(result, /अज्ञात/u);
+  assert.match(result, /और जानकारी चाहिए/u);
   assert.match(result, /YOJANA START/u);
-  assert.match(result, /pmkisan.gov.in/u);
+  assert.match(result, /pmuy.gov.in/u);
+  assert.doesNotMatch(result,/PM-KISAN|चुनी शर्तें|अज्ञात/u);
   assert.match(await flow.handle('sample', 'EDIT 1'), /खेती योग्य/u);
   assert.match(await flow.handle('sample', '1'), /आयकर/u);
   assert.match(await flow.handle('sample', 'START'), /Choose your language/u);
@@ -73,4 +74,34 @@ test('comparison back revisits the answer that excluded a scheme', async () => {
   await flow.handle('sample', '2');
   assert.match(await flow.handle('sample', '3'), /cultivable land/u);
   assert.match(await flow.handle('sample', '1'), /income tax/u);
+});
+
+test('WhatsApp result shows one best suitable scheme while retaining full internal comparison',()=>{
+  const profiles={
+    'pm-kisan':{scheme_id:'pm-kisan',owns_cultivable_land:true,income_tax_payer_last_year:false,practising_registered_professional:false,other_official_exclusion:false},
+    'pm-kmy':{scheme_id:'pm-kmy',small_marginal_land_up_to_2ha:false},
+    'pm-sym':{scheme_id:'pm-sym',unorganised_worker:false},
+    pmuy:{scheme_id:'pmuy',adult_woman_18_plus:false},
+  };
+  const flow=createSchemeComparison({answers:service});
+  const result=flow.restore('short',{role:'farmer',profiles},'en');
+  assert.match(result,/\*PM-KISAN\*[\s\S]*Possible match/u);
+  assert.doesNotMatch(result,/Maandhan|Ujjwala|Selected conditions|failed|unknown|4\/4/u);
+  assert.match(result,/page 2, page 3/u);
+  assert.equal((result.match(/https:\/\/pmkisan.gov.in/g)||[]).length,1);
+  assert.equal(service.recommend({profiles:Object.values(profiles)}).results.length,4);
+  assert.equal(Object.keys(flow.snapshot('short').profiles).length,4);
+});
+
+test('all excluded results never recommend a failed scheme',()=>{
+  const profiles={
+    'pm-kisan':{owns_cultivable_land:false},'pm-kmy':{small_marginal_land_up_to_2ha:false},
+    'pm-sym':{age_18_to_40:false},pmuy:{adult_woman_18_plus:false},
+  };
+  for(const language of ['en','hi']){
+    const flow=createSchemeComparison({answers:service});
+    const result=flow.restore('none',{role:'farmer',profiles},language);
+    assert.match(result,language==='hi'?/कोई उपयुक्त योजना नहीं/u:/could not identify a suitable scheme/u);
+    assert.doesNotMatch(result,/PM-KISAN|Ujjwala|Maandhan|Possible match|संभावित मेल|Selected conditions/u);
+  }
 });
