@@ -94,6 +94,37 @@ test('Hindi NO in a mixed append batch reaches the next scheme once through the 
   assert.deepEqual(f.calls,{model:0,chat:0,speech:0,profile:0,interpret:0,download:0});
 });
 
+test('worker replies after a two-minute pause advance through either batch type to a cited highlighted result',async()=>{
+  for(const type of ['notify','append']){
+    const f=setup();
+    for(const [id,text] of [['start','YOJANA START'],['english','2'],['worker','3'],['age-yes','1'],['income-yes','1']]){
+      assert.deepEqual((await f.next(id,text)).statuses,['sent']);
+    }
+    assert.match(f.replies.at(-1).text,/3\. Do you work in the unorganised sector\?/u);
+    f.advance(120000);
+    const reply=f.message('unorganised-yes','1');
+    const rows=type==='append'
+      ? [f.message('own-worker-prompt','Worker prompt',{fromMe:true}),reply]
+      : [reply];
+    const advanced=await f.batch(type,rows);
+    assert.deepEqual(advanced.selected,[reply]);
+    assert.deepEqual(advanced.statuses,['sent']);
+    assert.match(f.replies.at(-1).text,/4\. Are you covered by EPF, ESIC, or NPS\?/u);
+    for(const id of ['pension-coverage-no','income-tax-no','other-pension-no']){
+      assert.deepEqual((await f.next(id,'2')).statuses,['sent']);
+    }
+    // Other schemes can still have unanswered conditions; RESULTS selects the
+    // completed worker match without inventing answers for those schemes.
+    assert.deepEqual((await f.next('worker-results','YOJANA RESULTS')).statuses,['sent']);
+    const result=f.replies.at(-1).text;
+    assert.match(result,/\*Pradhan Mantri Shram Yogi Maandhan\*[\s\S]*Possible match/u);
+    assert.match(result,/\*Key points:\*[\s\S]*• Benefit:[^\n]+\[\d+\]/u);
+    assert.match(result,/• Source: Pradhan Mantri Shram Yogi Maandhan Yojana: Ministry information note, page \d+(?:, page \d+)* — https:\/\/www\.labour\.gov\.in\/static\/uploads\/2025\/07\/cdc13db52c1398b561576094a81b7b7d\.pdf \[\d+\]/u);
+    assert.match(result,/Would you like help finding a nearby service centre\?\n1 Yes · 2 No/u);
+    assert.deepEqual(f.calls,{model:0,chat:0,speech:0,profile:0,interpret:0,download:0});
+  }
+});
+
 test('stale and unrelated append messages cannot advance a pending Hindi questionnaire',async()=>{
   const f=setup();
   await startHindiFarmer(f);
