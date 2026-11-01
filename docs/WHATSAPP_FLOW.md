@@ -9,6 +9,8 @@
 
 ## WhatsApp journey
 
+Outgoing messages mentioning `YOJANA START` include the owner's approved click-to-chat restart URL and bilingual instructions. WhatsApp plain text cannot turn a command label into a hidden hyperlink: users tap the visible URL, then tap Send on the prefilled `YOJANA START` draft. Opening the URL alone does not restart or submit an answer. The restart URL contains no profile information.
+
 The current Baileys entry point uses PR #10's six-scheme comparison by default. Farmer checks start with PM-KISAN and PM-KMY; student, worker, artisan and family roles start with NMMSS, PM-SYM, PM Vishwakarma and PMUY respectively. See [national role coverage](NATIONAL_ROLE_COVERAGE.md) for exact selected rules and source limits. Confirmed natural-profile facts carry into comparison; ambiguous income periods are clarified first. Results keep the optional CSC yes/no offer. Additional discovered pages remain separately labelled under review. `YOJANA_MULTI_SCHEME=0` selects the earlier single-scheme route; `YOJANA_NATURAL_FLOW=0` restores the earlier default menu route as well.
 
 The comparison and single-scheme results can show up to two short, source-referenced benefit and important-condition points in Hindi or English. These reuse existing pinned answer text, not model-generated prose. The source approval, review-expiry and digest gates are checked again; missing or changed evidence removes the affected point, while the preliminary recommendation and its rule citations remain. Excluded results receive no benefit highlights.
