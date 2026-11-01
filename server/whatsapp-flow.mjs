@@ -5,6 +5,7 @@ import { topicFor } from './verified-facts.mjs';
 import { memoryStore } from './local-store.mjs';
 import { extractProfileStatement, interpretQuestionAnswer, isProfileStatement } from './profile-extract.mjs';
 import { createSchemeDiscovery } from './scheme-discovery.mjs';
+import { resultEvidence } from './result-evidence.mjs';
 
 function normalize(text) {
   return String(text ?? '').trim().normalize('NFC').toLocaleLowerCase().replace(/[.!?।,]/gu, '').trim();
@@ -76,7 +77,7 @@ function parseYesNo(text) {
   return undefined;
 }
 
-function formatRecommendation(result, language) {
+function formatRecommendation(result, language, getPassages) {
   const item = result.results?.[0];
   if (!item) return language === 'hi' ? 'सुझाव के लिए जरूरी जाँचे गए स्रोत उपलब्ध नहीं हैं। कृपया आधिकारिक कार्यालय से पुष्टि करें।' : 'The reviewed evidence required for this check is unavailable. Please confirm with the official office.';
   const status = item.status === 'potential_match'
@@ -84,24 +85,16 @@ function formatRecommendation(result, language) {
     : item.status === 'not_matched'
       ? (language === 'hi' ? 'एक या अधिक जाँची गई शर्तों से मेल नहीं' : 'Does not match one or more checked conditions')
       : (language === 'hi' ? 'अधिक जानकारी चाहिए' : 'More information is needed');
-  const citationLabel = language === 'hi' ? 'स्रोत' : 'Source';
   const explanation = item.reasons?.map(reason => `• ${reason}`).join('\n') || '';
   const questions = Object.values(questionSets).flat();
   const missing = (item.missing_fields || []).map(key => questions.find(question => question.key === key)?.[language] || key);
   const missingText = missing.length
     ? `\n${language === 'hi' ? '• जिन सवालों के जवाब बाकी हैं:' : '• Answers still needed:'}\n${missing.map(question => `  ◦ ${question}`).join('\n')}`
     : '';
-  const groupedCitations = new Map();
-  for (const citation of item.citations || []) {
-    const key = `${citation.title}\n${citation.url}`;
-    if (!groupedCitations.has(key)) groupedCitations.set(key, { ...citation, locators: [] });
-    const group = groupedCitations.get(key);
-    if (citation.locator && !group.locators.includes(citation.locator)) group.locators.push(citation.locator);
-  }
-  const sources = [...groupedCitations.values()].map(citation => {
-    const locator = citation.locators.length ? `, ${citation.locators.join(', ')}` : '';
-    return `${citationLabel}: ${citation.title}${locator} — ${citation.url}`;
-  }).join('\n');
+  const evidence = resultEvidence(item, language, getPassages);
+  const highlights = evidence.points.length
+    ? `\n${language === 'hi' ? '*मुख्य बातें:*' : '*Key points:*'}\n${evidence.points.join('\n')}` : '';
+  const sources = evidence.sources.join('\n');
   const note = language === 'hi'
     ? 'यह शुरुआती जाँच है, सरकारी निर्णय नहीं। पूरी शर्तें आधिकारिक पोर्टल या स्थानीय कार्यालय से जाँचें।'
     : 'Preliminary check only, not an official decision. Verify the full rules with the official portal or local office.';
@@ -112,7 +105,7 @@ function formatRecommendation(result, language) {
   const documents = item.scheme_id === 'pmuy'
     ? (language === 'hi' ? '• आवश्यक दस्तावेज़: PMUY की आधिकारिक सूची देखें: https://pmuy.gov.in/ujjwala2.html' : '• Required documents: See the official PMUY list: https://pmuy.gov.in/ujjwala2.html')
     : (language === 'hi' ? '• आवश्यक दस्तावेज़: आधिकारिक योजना पोर्टल या कार्यालय से सूची की पुष्टि करें।' : '• Required documents: Confirm the list with the official scheme portal or office.');
-  return `*${item.scheme_name}*\n• ${status}${explanation ? `\n${explanation}` : ''}${missingText}\n• ${note}${next ? `\n${next}` : ''}\n${documents}${sources ? `\n• ${sources.replaceAll('\n', '\n• ')}` : ''}`;
+  return `*${item.scheme_name}*\n• ${status}${explanation ? `\n${explanation}` : ''}${missingText}${highlights}\n• ${note}${next ? `\n${next}` : ''}\n${documents}${sources ? `\n${sources}` : ''}`;
 }
 
 function infoOnly(role, language, passages) {
@@ -137,7 +130,8 @@ function infoOnly(role, language, passages) {
 
 // Language and profile answers are kept per direct chat in process memory and cleared on completion/restart.
 export function createWhatsAppConversation({ answers, passages, store = memoryStore(), now = Date.now, multiScheme = false, naturalFlow = process.env.YOJANA_NATURAL_FLOW !== '0', extractProfile = extractProfileStatement, interpretAnswer = interpretQuestionAnswer, discoverSchemes = createSchemeDiscovery({getPassages:()=>passages??loadPassages()}).discover }) {
-  const comparison = createSchemeComparison({ answers, now, onResults: (chatId, snapshot) => {
+  const getResultPassages = () => passages ?? loadPassages(new Date(now()));
+  const comparison = createSchemeComparison({ answers, now, getPassages: getResultPassages, onResults: (chatId, snapshot) => {
     awaitingCscOffer.set(chatId,now()+300000);
     const completed = { ...(saved(chatId)?.profiles || {}), ...(completedByChat.get(chatId) || {}), ...snapshot.profiles };
     completedByChat.set(chatId, completed);
@@ -204,7 +198,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     const scheme_id=schemeFromText(text) || comparison.scheme(chatId) || active?.profile?.scheme_id || lastSchemeByChat.get(chatId) || null;
     if(scheme_id)lastSchemeByChat.set(chatId,scheme_id);
     if (active?.phase==='complete' && scheme_id===active.profile?.scheme_id && /^(?:am i eligible|do i qualify|क्या मैं पात्र हूँ|क्या मैं योग्य हूँ)[?？]?$/iu.test(String(text).trim())) {
-      return formatRecommendation(answers.recommend({profile:active.profile,language}),language);
+      return formatRecommendation(answers.recommend({profile:active.profile,language}),language,getResultPassages);
     }
     let result;
     try { result=await answers.chat({question:text,language,...(scheme_id?{scheme_id}:{})}); }
@@ -338,7 +332,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
       questionnaireByChat.set(chatId,{phase:'complete',language:old.language,role,profile:old.profile,index:0});
       const result=answers.recommend({profile:old.profile,language:old.language});
       if(result.results?.length)awaitingCscOffer.set(chatId,now()+300000);
-      return formatRecommendation(result,old.language)+(result.results?.length?'\n\n'+cscOffer(old.language):'');
+      return formatRecommendation(result,old.language,getResultPassages)+(result.results?.length?'\n\n'+cscOffer(old.language):'');
     }
 
     if (isStart(text)) {
@@ -570,7 +564,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
         if(result.results?.length)awaitingCscOffer.set(chatId,now()+300000);
         const another=naturalFlow && state.role==='farmer' && result.results?.length && (passages??loadPassages()).some(p=>p.scheme_id==='pm-sym' && p.id==='pm-sym-ministry-note-2025:2');
         if(another)moreSchemeByChat.set(chatId,'pm-sym');
-        return formatRecommendation(result, state.language)+(result.results?.length?'\n\n'+cscOffer(state.language):'')+(another?'\n\n'+moreHint(state.language):'');
+        return formatRecommendation(result, state.language, getResultPassages)+(result.results?.length?'\n\n'+cscOffer(state.language):'')+(another?'\n\n'+moreHint(state.language):'');
       } catch {
         return state.language === 'hi' ? 'सुझाव सेवा अभी उपलब्ध नहीं है। बाद में फिर कोशिश करें।' : 'The recommendation service is unavailable. Please try again later.';
       }
