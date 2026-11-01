@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createAnswerService } from './answer-service.mjs';
 import { createWhatsAppConversation } from './whatsapp-flow.mjs';
 import { compareProfiles, createSchemeComparison } from './scheme-comparison.mjs';
+import { loadPassages } from './corpus.mjs';
 
 const service = createAnswerService();
 test('multiple profiles rank sourced matches ahead of unknown and failed checks', () => {
@@ -86,11 +87,29 @@ test('WhatsApp result shows one best suitable scheme while retaining full intern
   const flow=createSchemeComparison({answers:service});
   const result=flow.restore('short',{role:'farmer',profiles},'en');
   assert.match(result,/\*PM-KISAN\*[\s\S]*Possible match/u);
+  assert.match(result,/\*Key points:\*[\s\S]*Benefit:.*₹6,000[\s\S]*Important:.*eKYC/u);
+  assert.match(result,/Source:.*PM-KISAN.*\[\d+\]/u);
   assert.doesNotMatch(result,/Maandhan|Ujjwala|Selected conditions|failed|unknown|4\/4/u);
   assert.match(result,/page 2, page 3/u);
-  assert.equal((result.match(/https:\/\/pmkisan.gov.in/g)||[]).length,1);
+  const links = result.match(/https:\/\/[^\s]+/gu) || [];
+  assert.equal(new Set(links).size, links.length, 'each cited document should appear once');
+  assert.ok(links.some(link => link.includes('RevisedPM-KISANOperationalGuidelines')));
+  assert.ok(links.some(link => link === 'https://pmkisan.gov.in/'));
   assert.equal(service.recommend({profiles:Object.values(profiles)}).results.length,4);
   assert.equal(Object.keys(flow.snapshot('short').profiles).length,4);
+});
+
+test('comparison result keeps the match but withholds highlights when their separate source expires',()=>{
+  const passages = loadPassages(new Date('2026-11-01T08:00:00Z'))
+    .filter(passage => passage.document_id !== 'pmkisan-home-2026');
+  const answers = createAnswerService({ passages });
+  const profiles = { 'pm-kisan': { scheme_id:'pm-kisan', owns_cultivable_land:true,
+    income_tax_payer_last_year:false, practising_registered_professional:false, other_official_exclusion:false } };
+  const result = createSchemeComparison({ answers, getPassages:()=>passages })
+    .restore('fictional',{role:'farmer',profiles},'en');
+  assert.match(result,/Possible match/u);
+  assert.match(result,/RevisedPM-KISANOperationalGuidelines/u);
+  assert.doesNotMatch(result,/Key points:|₹6,000|scheme summary/u);
 });
 
 test('all excluded results never recommend a failed scheme',()=>{

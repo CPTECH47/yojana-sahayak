@@ -59,6 +59,7 @@ test('START asks language, then role, and farmer questions produce a sourced pre
   assert.match(result, /अधिक जानकारी चाहिए/u);
   assert.match(result, /जिन सवालों के जवाब बाकी हैं/u);
   assert.match(result, /कोई अन्य अपवाद/u);
+  assert.match(result, /मुख्य बातें:[\s\S]*लाभ:.*₹6,000[\s\S]*ज़रूरी बात:.*eKYC/u);
   assert.match(result, /pmkisan.gov.in/u);
   assert.equal(calls.at(-1).profile.scheme_id, 'pm-kisan');
   assert.equal(calls.at(-1).profile.owns_cultivable_land, true);
@@ -120,6 +121,7 @@ test('recommendation reply groups source pages and offers CSC help separately fr
   await flow.handle('chat-a', 'yes');
   const result = await flow.handle('chat-a', 'no');
   assert.match(result, /Does not match one or more checked conditions/u);
+  assert.doesNotMatch(result, /Key points:|Benefit:/u);
   assert.match(result, /Preliminary check only/u);
   assert.match(result, /page 2, page 3/u);
   assert.equal((result.match(/Source:/gu) || []).length, 1);

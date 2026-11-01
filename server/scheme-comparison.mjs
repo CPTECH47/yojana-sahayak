@@ -1,5 +1,6 @@
 import { questionSets } from './scheme-questions.mjs';
-import { schemes } from './corpus.mjs';
+import { loadPassages, schemes } from './corpus.mjs';
+import { resultEvidence } from './result-evidence.mjs';
 
 export const schemeQuestions = {
   'pm-kisan': questionSets.farmer,
@@ -47,7 +48,7 @@ export function compareProfiles(input, recommend) {
     unavailable_schemes: unavailable, ranking_basis: 'reviewed_condition_coverage', official_decision: false };
 }
 
-export function createSchemeComparison({ answers, now = Date.now, onResults = () => {} }) {
+export function createSchemeComparison({ answers, now = Date.now, onResults = () => {}, getPassages = () => loadPassages(new Date(now())) }) {
   const sessions = new Map();
   const clear = id => sessions.delete(id);
   function assess(state) {
@@ -84,15 +85,13 @@ export function createSchemeComparison({ answers, now = Date.now, onResults = ()
         :(matched?'• Possible match — your answers meet the selected checks.':'• More information needed — some conditions are still unanswered.'));
       if(item.scope_note)lines.push('• '+item.scope_note);
       if(!matched)lines.push(hi?'• बाकी सवालों के लिए *YOJANA NEXT* भेजें।':'• Send *YOJANA NEXT* to answer the remaining questions.');
-      const sources=new Map();
-      for(const source of item.citations){
-        const key=source.title+'\n'+source.url;
-        if(!sources.has(key))sources.set(key,{...source,locators:[]});
-        const group=sources.get(key);
-        if(source.locator && !group.locators.includes(source.locator))group.locators.push(source.locator);
+      const evidence = resultEvidence(item, state.language, getPassages);
+      if(evidence.points.length) {
+        lines.push(hi ? '*मुख्य बातें:*' : '*Key points:*');
+        lines.push(...evidence.points);
       }
       lines.push(hi?'• शुरुआती मार्गदर्शन है; पूरी पात्रता की पुष्टि आधिकारिक कार्यालय से करें।':'• Preliminary guidance. Confirm full eligibility with the official office.');
-      for(const source of sources.values())lines.push(`${hi?'• स्रोत':'• Source'}: ${source.title}${source.locators.length?', '+source.locators.join(', '):''} — ${source.url}`);
+      lines.push(...evidence.sources);
     }else{
       lines.push(hi?'जाँची गई जानकारी से अभी कोई उपयुक्त योजना नहीं मिली।':'I could not identify a suitable scheme from the reviewed checks.');
       if(response.unavailable_schemes.length)lines.push(hi?'कुछ योजनाओं के जाँचे गए स्रोत उपलब्ध नहीं हैं।':'Reviewed evidence is unavailable for some schemes.');
