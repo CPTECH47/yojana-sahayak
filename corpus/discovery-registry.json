@@ -1,0 +1,134 @@
+{
+  "scope": "National discovery seeds. A listed portal does not approve a scheme or an eligibility rule.",
+  "sources": [
+    {
+      "id": "farmer-income",
+      "roles": [
+        "farmer"
+      ],
+      "title": "PM-KISAN official portal",
+      "url": "https://pmkisan.gov.in/",
+      "format": "html"
+    },
+    {
+      "id": "farmer-insurance",
+      "roles": [
+        "farmer"
+      ],
+      "title": "PMFBY official downloads",
+      "url": "https://pmfby.gov.in/downloads",
+      "format": "html"
+    },
+    {
+      "id": "farmer-programmes",
+      "roles": [
+        "farmer"
+      ],
+      "title": "Ministry of Agriculture scheme overview, PIB, 30 July 2024",
+      "url": "https://www.pib.gov.in/Pressreleaseshare.aspx?PRID=2039208&lang=2&reg=48",
+      "format": "html"
+    },
+    {
+      "id": "student-scholarships",
+      "roles": [
+        "student"
+      ],
+      "title": "National Scholarship Portal",
+      "url": "https://scholarships.gov.in/All-Scholarships",
+      "format": "html"
+    },
+    {
+      "id": "worker-ministry",
+      "roles": [
+        "worker"
+      ],
+      "title": "Ministry of Labour and Employment",
+      "url": "https://www.labour.gov.in/",
+      "format": "html"
+    },
+    {
+      "id": "artisan-vishwakarma",
+      "roles": [
+        "artisan"
+      ],
+      "title": "PM Vishwakarma official portal",
+      "url": "https://pmvishwakarma.gov.in/",
+      "format": "html"
+    },
+    {
+      "id": "family-pmuy",
+      "roles": [
+        "family"
+      ],
+      "title": "PMUY official application page",
+      "url": "https://pmuy.gov.in/ujjwala2.html",
+      "format": "html"
+    },
+    {
+      "id": "national-discovery",
+      "roles": [
+        "farmer",
+        "student",
+        "worker",
+        "artisan",
+        "family"
+      ],
+      "title": "myScheme national scheme discovery",
+      "url": "https://www.myscheme.gov.in/",
+      "format": "html"
+    },
+    {
+      "id": "national-directory",
+      "roles": [
+        "farmer",
+        "student",
+        "worker",
+        "artisan",
+        "family"
+      ],
+      "title": "India.gov.in scheme directory",
+      "url": "https://www.india.gov.in/my-government/schemes",
+      "format": "html"
+    },
+    {
+      "id": "national-releases",
+      "roles": [
+        "farmer",
+        "student",
+        "worker",
+        "artisan",
+        "family"
+      ],
+      "title": "PIB current government releases",
+      "url": "https://www.pib.gov.in/allRel.aspx",
+      "format": "html"
+    },
+    {
+      "id": "pmkmy-policy-2026",
+      "roles": [
+        "farmer"
+      ],
+      "url": "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2309204&lang=1&reg=48",
+      "title": "Securing Farmers’ Future with Dignity: 7 Years of PM-KMY",
+      "format": "html"
+    },
+    {
+      "id": "nmmss-policy-2026",
+      "roles": [
+        "student"
+      ],
+      "url": "https://www.pib.gov.in/newsite/erelcontent.aspx?lang=2&reg=48&relid=294184",
+      "title": "NMMSS 2026-27: Ministry policy summary, 1 September 2026",
+      "format": "html"
+    },
+    {
+      "id": "pmvishwakarma-policy-2026",
+      "roles": [
+        "artisan"
+      ],
+      "url": "https://www.pib.gov.in/PressNoteDetails.aspx?ModuleId=3&NoteId=159998&lang=1&reg=1",
+      "title": "PM Vishwakarma: Strengthening Traditional Artisans and Craftspeople",
+      "format": "html"
+    }
+  ]
+}

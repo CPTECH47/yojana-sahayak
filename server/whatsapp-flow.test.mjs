@@ -1,0 +1,278 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createAnswerService } from './answer-service.mjs';
+import { loadPassages } from './corpus.mjs';
+import { createWhatsAppConversation } from './whatsapp-flow.mjs';
+
+const passages = loadPassages();
+const service = createAnswerService({ passages });
+
+function conversation(overrides = {}) {
+  const calls = [];
+  const answers = {
+    recommend(input) { calls.push(input); return service.recommend(input); },
+    async chat(input) { calls.push(input); return { answer_text: `${input.language}:${input.question}`, citations: [] }; },
+    ...overrides,
+  };
+  return { flow: createWhatsAppConversation({ answers, match: (text, language) => `${language}:${text}`, passages }), calls };
+}
+
+async function startAndChoose(flow, jid = 'chat-a', language = '1') {
+  await flow.handle(jid, 'START');
+  return flow.handle(jid, language);
+}
+
+test('Hindi numeric questionnaire replies support yes, no, back, skip and cancel', async () => {
+  const { flow, calls } = conversation();
+  await startAndChoose(flow);
+  const question = await flow.handle('chat-a', '1');
+  assert.match(question, /1 हाँ[\s\S]*2 नहीं[\s\S]*3 पिछला सवाल[\s\S]*4 पता नहीं[\s\S]*5 रोकें/u);
+  await flow.handle('chat-a', '1');
+  assert.match(await flow.handle('chat-a', '3'), /खेती योग्य जमीन/u);
+  await flow.handle('chat-a', '1');
+  await flow.handle('chat-a', '2');
+  await flow.handle('chat-a', '2');
+  const result = await flow.handle('chat-a', '4');
+  assert.match(result, /अधिक जानकारी चाहिए/u);
+  assert.equal(calls.at(-1).profile.other_official_exclusion, null);
+  await flow.handle('chat-a', 'START');
+  await flow.handle('chat-a', '1');
+  await flow.handle('chat-a', '1');
+  assert.match(await flow.handle('chat-a', '5'), /सवाल-जवाब रोक दिया/u);
+});
+
+test('START asks language, then role, and farmer questions produce a sourced preliminary result', async () => {
+  const { flow, calls } = conversation();
+  assert.match(await flow.handle('chat-a', 'START'), /For Hindi, press 1/u);
+  assert.match(await flow.handle('chat-a', 'START'), /Government scheme guidance/u);
+  const roleMenu = await flow.handle('chat-a', '1');
+  assert.match(roleMenu, /1 किसान/u);
+  assert.doesNotMatch(roleMenu, /स्वयंसेवक|\n6 /u);
+  assert.match(roleMenu, /आधार, बैंक विवरण/u);
+  assert.match(await flow.handle('chat-a', '1'), /PM-KISAN/u);
+  await flow.handle('chat-a', 'yes');
+  await flow.handle('chat-a', 'no');
+  await flow.handle('chat-a', 'maybe');
+  assert.match(await flow.handle('chat-a', 'maybe'), /जवाब समझ नहीं आया/u);
+  await flow.handle('chat-a', 'no');
+  const result = await flow.handle('chat-a', 'SKIP');
+  assert.match(result, /अधिक जानकारी चाहिए/u);
+  assert.match(result, /जिन सवालों के जवाब बाकी हैं/u);
+  assert.match(result, /कोई अन्य अपवाद/u);
+  assert.match(result, /मुख्य बातें:[\s\S]*लाभ:.*₹6,000[\s\S]*ज़रूरी बात:.*eKYC/u);
+  assert.match(result, /pmkisan.gov.in/u);
+  assert.equal(calls.at(-1).profile.scheme_id, 'pm-kisan');
+  assert.equal(calls.at(-1).profile.owns_cultivable_land, true);
+  assert.equal(calls.at(-1).profile.income_tax_payer_last_year, false);
+  assert.equal(calls.at(-1).profile.other_official_exclusion, null);
+  assert.match(result,/जिन सवालों के जवाब बाकी हैं/u);
+});
+
+test('failed and skipped conditions are reported only after every question, with a way to resume', async () => {
+  const { flow } = conversation();
+  await startAndChoose(flow, 'chat-a', '2');
+  await flow.handle('chat-a', '3');
+  for (const answer of ['yes', 'skip', 'yes', 'yes', 'no']) await flow.handle('chat-a', answer);
+  const result = await flow.handle('chat-a', 'no');
+  assert.match(result, /Coverage under EPF, ESIC or NPS was reported/u);
+  assert.match(result, /Answers still needed:[\s\S]*monthly income/u);
+  assert.match(result, /Send NEXT to answer skipped questions/u);
+  assert.match(await flow.handle('chat-a','NEXT'),/monthly income/u);
+});
+
+test('family questionnaire recommends PMUY only as a preliminary match with its sources', async () => {
+  const { flow, calls } = conversation();
+  await startAndChoose(flow);
+  await flow.handle('chat-a', '5');
+  await flow.handle('chat-a', 'yes');
+  await flow.handle('chat-a', 'no');
+  const result = await flow.handle('chat-a', 'yes');
+  assert.match(result, /PMUY/u);
+  assert.match(result, /संभावित मेल/u);
+  assert.match(result, /pmuy.gov.in\/ujjwala2.html/u);
+  assert.match(result, /आवश्यक दस्तावेज़/u);
+  assert.match(result, /क्या नज़दीकी सेवा केंद्र खोजने में मदद चाहिए/u);
+  assert.doesNotMatch(result, /PIN कोड/u);
+  assert.match(await flow.handle('chat-a','1'),/PIN कोड/u);
+  assert.equal(calls.at(-1).profile.scheme_id, 'pmuy');
+  assert.equal(calls.at(-1).profile.household_has_existing_lpg, false);
+});
+
+test('recommendation reply groups source pages and offers CSC help separately from location', async () => {
+  const { flow } = conversation({
+    recommend({profile}) {
+      if(!profile.practising_registered_professional)return {results:[{status:'needs_information'}]};
+      return {
+        results: [{
+          scheme_name: 'PM-KISAN',
+          status: 'not_matched',
+          reasons: ['A listed professional is practising.'],
+          citations: [
+            { title: 'PM-KISAN Operational Guidelines', locator: 'page 2', url: 'https://example.gov/guidelines.pdf' },
+            { title: 'PM-KISAN Operational Guidelines', locator: 'page 3', url: 'https://example.gov/guidelines.pdf' },
+          ],
+        }],
+      };
+    },
+  });
+  await startAndChoose(flow, 'chat-a', '2');
+  await flow.handle('chat-a', '1');
+  for (const answer of ['yes', 'no']) await flow.handle('chat-a', answer);
+  await flow.handle('chat-a', 'yes');
+  const result = await flow.handle('chat-a', 'no');
+  assert.match(result, /Does not match one or more checked conditions/u);
+  assert.doesNotMatch(result, /Key points:|Benefit:/u);
+  assert.match(result, /Preliminary check only/u);
+  assert.match(result, /page 2, page 3/u);
+  assert.equal((result.match(/Source:/gu) || []).length, 1);
+  assert.doesNotMatch(result, /locator\.csccloud\.in/u);
+  assert.match(result, /Would you like help finding/u);
+  assert.match(result, /Wrong answer/u);
+  assert.match(result, /Required documents/u);
+  assert.doesNotMatch(result, /Confirm with the official scheme portal or help desk/u);
+});
+
+test('CSC search creates an encoded Maps link after a valid PIN, with an official fallback',async()=>{
+  const {flow}=conversation();
+  await startAndChoose(flow,'a','2');
+  assert.match(await flow.handle('a','CSC'),/6-digit PIN/);
+  assert.equal(flow.acceptsBareQuestionnaireReply('a','123'),true);
+  assert.match(await flow.handle('a','123'),/valid 6-digit/);
+  const result=await flow.handle('a','263139');
+  const link=result.match(/https:\/\/www\.google\.com\/maps\/search\/\?\S+/u)?.[0];
+  assert.ok(link); const url=new URL(link);
+  assert.equal(url.searchParams.get('api'),'1');
+  assert.equal(url.searchParams.get('query'),'Common Service Centre 263139 India');
+  assert.match(result,/not verified as CSCs/);
+  assert.match(result,/locator\.csccloud\.in/);
+  assert.equal(flow.acceptsBareQuestionnaireReply('a','another town'),true); // existing active role remains untouched
+});
+
+test('CSC search accepts a town and can be cancelled',async()=>{
+  const {flow}=conversation();await startAndChoose(flow,'a','1');
+  await flow.handle('a','CSC');
+  const result=await flow.handle('a','हल्द्वानी');
+  assert.equal(new URL(result.match(/https:\/\/www\.google\.com\/maps\/search\/\?\S+/u)[0]).searchParams.get('query'),'Common Service Centre हल्द्वानी India');
+  await flow.handle('a','CSC');assert.match(await flow.handle('a','CANCEL'),/छोड़/u);
+});
+
+test('completed scheme result asks for consent before asking for location',async()=>{
+  const {flow}=conversation();
+  await startAndChoose(flow,'a','2');
+  await flow.handle('a','5');await flow.handle('a','yes');await flow.handle('a','no');
+  const result=await flow.handle('a','yes');
+  assert.match(result,/Would you like help finding a nearby service centre/);
+  assert.doesNotMatch(result,/6-digit PIN code/);
+  assert.match(await flow.handle('a','263139'),/Would you like help finding/);
+  assert.match(await flow.handle('a','1'),/6-digit PIN code/);
+  const maps=await flow.handle('a','263139');
+  assert.match(maps,/google\.com\/maps\/search/);
+  assert.match(maps,/not verified as CSCs/);
+  await startAndChoose(flow,'b','2');await flow.handle('b','5');await flow.handle('b','yes');await flow.handle('b','no');await flow.handle('b','yes');
+  assert.match(await flow.handle('b','2'),/Okay/);
+});
+
+test('worker questionnaire checks only sourced PM-SYM conditions, including income band', async () => {
+  const { flow, calls } = conversation();
+  await startAndChoose(flow, 'chat-a', '2');
+  await flow.handle('chat-a', '3');
+  for (const answer of ['yes', 'yes', 'yes', 'no', 'no', 'no']) await flow.handle('chat-a', answer);
+  const result = await flow.handle('chat-a', 'START');
+  assert.match(result, /भाषा चुनें/u);
+  assert.equal(calls.at(-1).profile.scheme_id, 'pm-sym');
+  assert.equal(calls.at(-1).profile.monthly_income_at_most_15000, true);
+});
+
+test('BACK repeats the previous question; CANCEL clears the active questionnaire', async () => {
+  const { flow, calls } = conversation();
+  await startAndChoose(flow);
+  await flow.handle('chat-a', '1');
+  await flow.handle('chat-a', 'yes');
+  const previous = await flow.handle('chat-a', 'BACK');
+  assert.match(previous, /खेती योग्य जमीन/u);
+  assert.match(await flow.handle('chat-a', 'CANCEL'), /हटा दी गई/u);
+  assert.equal(calls.filter(call=>call.question).length, 0);
+});
+
+test('student gets an information lead without a false current-eligibility match', async () => {
+  const { flow, calls } = conversation();
+  await startAndChoose(flow);
+  const result = await flow.handle('chat-a', '2');
+  assert.match(result, /वर्तमान पात्रता नियम सत्यापित नहीं/u);
+  assert.match(result, /scholarships.gov.in/u);
+  assert.equal(calls.length, 0);
+});
+
+test('each direct chat has its own language and profile state', async () => {
+  const { flow, calls } = conversation();
+  await flow.handle('a', 'START');
+  await flow.handle('b', 'START');
+  await flow.handle('a', '1');
+  await flow.handle('b', '2');
+  const hindiRole = await flow.handle('a', '2');
+  const englishLead = await flow.handle('b', '2');
+  assert.match(hindiRole, /NMMSS/u);
+  assert.match(englishLead, /current eligibility rules/u);
+  await flow.handle('a', 'PMUY eligibility');
+  assert.deepEqual(calls.at(-1), { question: 'PMUY eligibility', language: 'hi', scheme_id: 'pmuy' });
+});
+
+test('role menu has five choices; a direct question remembers the scheme for follow-ups',async()=>{
+  const {flow,calls}=conversation();
+  const first=await flow.handle('chat-a','PM-KISAN benefit amount?');
+  assert.match(first,/en:PM-KISAN benefit amount/u);
+  assert.deepEqual(calls.at(-1),{question:'PM-KISAN benefit amount?',language:'en',scheme_id:'pm-kisan'});
+  await flow.handle('chat-a','How much money per year?');
+  assert.equal(calls.at(-1).scheme_id,'pm-kisan');
+  await flow.handle('chat-a','PMUY application steps?');
+  assert.equal(calls.at(-1).scheme_id,'pmuy');
+  await flow.handle('chat-a','What documents are needed?');
+  assert.equal(calls.at(-1).scheme_id,'pmuy');
+  await flow.handle('chat-a','START');
+  await flow.handle('chat-a','2');
+  const menu=await flow.handle('chat-a','6');
+  assert.match(menu,/Please choose one of the listed options/u);
+  assert.doesNotMatch(menu,/Volunteer helping someone/u);
+  await flow.handle('chat-b','START');
+  assert.match(await flow.handle('chat-b','PM-KISAN benefit amount?'),/en:PM-KISAN benefit amount/u);
+  await flow.handle('chat-b','How much money per year?');
+  assert.equal(calls.at(-1).scheme_id,'pm-kisan');
+});
+
+test('selected farmer scheme supplies context for a question without its name',async()=>{
+  const {flow,calls}=conversation();
+  await startAndChoose(flow,'chat-a','2');
+  await flow.handle('chat-a','1');
+  await flow.handle('chat-a','How much money does it provide each year?');
+  assert.deepEqual(calls.at(-1),{question:'How much money does it provide each year?',language:'en',scheme_id:'pm-kisan'});
+});
+
+test('a personal eligibility follow-up reuses the fictional completed profile and cites rules',async()=>{
+  const {flow}=conversation();
+  await startAndChoose(flow,'chat-a','2');
+  await flow.handle('chat-a','1');
+  for(const answer of ['no','no','no','no'])await flow.handle('chat-a',answer);
+  const reply=await flow.handle('chat-a','Am I eligible?');
+  assert.match(reply,/Does not match one or more checked conditions/u);
+  assert.match(reply,/No recorded cultivable landholding/u);
+  assert.match(reply,/Source: PM-KISAN Operational Guidelines/u);
+  assert.doesNotMatch(reply,/official decision: true/u);
+});
+
+test('bare replies are accepted during the questionnaire and optional CSC prompt', async () => {
+  const { flow } = conversation();
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', '1'), false);
+  await flow.handle('chat-a', 'START');
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', '1'), true);
+  await flow.handle('chat-a', '1');
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', '1'), true);
+  await flow.handle('chat-a', '1');
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', 'YES'), true);
+  await flow.handle('chat-a', 'YES');
+  await flow.handle('chat-a', 'NO');
+  await flow.handle('chat-a', 'NO');
+  await flow.handle('chat-a', 'NO');
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', '263139'), true);
+  await flow.handle('chat-a','SKIP');
+  assert.equal(flow.acceptsBareQuestionnaireReply('chat-a', 'what is PM-KISAN?'), false);
+});

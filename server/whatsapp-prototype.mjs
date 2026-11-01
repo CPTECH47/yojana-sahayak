@@ -1,26 +1,74 @@
-import makeWASocket, { DisconnectReason, fetchLatestWaWebVersion, useMultiFileAuthState } from '@whiskeysockets/baileys';
+import 'dotenv/config';
+import makeWASocket, { DisconnectReason, downloadMediaMessage, fetchLatestWaWebVersion, useMultiFileAuthState } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
 import QRCode from 'qrcode';
 import pino from 'pino';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
-import { answerMatch, demoCommand } from './yojana-answer.mjs';
 import { createAnswerService } from './answer-service.mjs';
+import { createWhatsAppConversation } from './whatsapp-flow.mjs';
+import { openLocalStore } from './local-store.mjs';
+import { createDelivery } from './delivery.mjs';
+import { scanReviewedUpdates, deliverReviewedAlerts } from './alerts.mjs';
+import { transcribeVoice } from './voice.mjs';
+import { createVoiceFlow } from './voice-flow.mjs';
+import { createWhatsAppIngress } from './whatsapp-ingress.mjs';
+import { createWhatsAppGuard } from './whatsapp-guard.mjs';
+import { parseTestAllowlist } from './tester-allowlist.mjs';
+import { installSafeSignalLogging } from './safe-signal-logging.mjs';
+import { startSourceUpdates } from './source-update-runner.mjs';
+import { messageBatchDiagnostic, ingressStatusDiagnostic } from './whatsapp-content.mjs';
+import { createWhatsAppBatchGate } from './whatsapp-batches.mjs';
+import { withRestartLink } from './whatsapp-restart.mjs';
 
-const authDir = fileURLToPath(new URL('./.baileys-auth/', import.meta.url));
-const seen = new Set();
+installSafeSignalLogging(console);
+const diagnosticsEnabled=process.env.YOJANA_DIAGNOSTICS==='1';
+const diagnostic=value=>{if(diagnosticsEnabled)console.log('WhatsApp diagnostic: '+JSON.stringify(value));};
+
+const authDir = process.env.YOJANA_AUTH_DIR ? resolve(process.env.YOJANA_AUTH_DIR) : fileURLToPath(new URL('./.baileys-auth/', import.meta.url));
+const authLock = openLocalStore(join(authDir,'.owner'));
+const store = openLocalStore(resolve(process.env.YOJANA_STATE_DIR || '.runtime/whatsapp'));
 const answers = createAnswerService();
-
-function messageText(message) {
-  const content = message.message?.ephemeralMessage?.message ?? message.message;
-  return content?.conversation ?? content?.extendedTextMessage?.text ?? '';
-}
+const conversation = createWhatsAppConversation({ answers, store, multiScheme: process.env.YOJANA_NATURAL_FLOW !== '0' && process.env.YOJANA_MULTI_SCHEME !== '0' });
+const voice = createVoiceFlow({ answers, transcribe:transcribeVoice, fallback:conversation.handle, answerQuestion:conversation.answerQuestion, profileStatement:conversation.handleProfileStatement, isProfileStatement:conversation.isProfileStatement, isQuestionnaireReply:conversation.acceptsBareQuestionnaireReply, selectedLanguage:conversation.selectedLanguage, choosingLanguage:conversation.choosingLanguage, diagnostic:event=>console.log('Voice status: '+event) });
+const batchGate = createWhatsAppBatchGate({expectsReply:chat=>conversation.hasPendingPrompt(chat)||voice.hasPendingPrompt(chat)});
+const pendingVoice = new Map();
+let currentSocket, reconnectTimer, stopped=false, attempts=0;
+const send=async(chat,text)=>{
+  if(!currentSocket || stopped)throw Error('WhatsApp unavailable');
+  await currentSocket.sendMessage(chat,{text:withRestartLink(text)});
+};
+const deliver=createDelivery({store,handle:async (chat,text)=>{
+  if(text.startsWith('__VOICE_AUDIO__:')){
+    const key=text.slice('__VOICE_AUDIO__:'.length);const audio=pendingVoice.get(key);pendingVoice.delete(key);
+    return audio ? (await voice.handleAudio(chat,audio,conversation.hasActiveConversation(chat)) || 'Send YOJANA START to begin.') : 'Voice message unavailable. Please try again.';
+  }
+  return voice.handle(chat,text);
+},send:async(chat,text)=>{
+  await send(chat,text);
+  batchGate.markReplySent(chat);
+}});
+const receive=createWhatsAppIngress({conversation,voice,store,deliver,send,pendingVoice,
+  guard:createWhatsAppGuard({testNumbers:parseTestAllowlist(process.env.YOJANA_TEST_ALLOWLIST)}),
+  maxVoiceSeconds:process.env.YOJANA_STT_PROVIDER==='sarvam'?30:60,
+  downloadAudio:message=>downloadMediaMessage(message,'buffer',{}, {logger:pino({level:'silent'}),reuploadRequest:currentSocket?.updateMediaMessage}),
+  log:message=>console.log(message)});
+const alertTimer=setInterval(async()=>{
+  try {
+    scanReviewedUpdates({store,answers});
+    await deliverReviewedAlerts({store,answers,send,enabled:process.env.YOJANA_TEST_ALERTS==='1'});
+  }catch{console.error('Reviewed-update check failed; no automatic approval performed.');}
+},5*60*1000);
+const stopSourceUpdates=startSourceUpdates({log:message=>console.log(message)});
+function stop(){stopped=true;clearTimeout(reconnectTimer);clearInterval(alertTimer);stopSourceUpdates();currentSocket?.end(new Error('Operator stopped'));store.close();authLock.close();process.exitCode=0;}
+process.once('SIGINT',stop);process.once('SIGTERM',stop);
 
 async function start() {
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   const { version } = await fetchLatestWaWebVersion();
   const socket = makeWASocket({ auth: state, version, logger: pino({ level: 'silent' }), printQRInTerminal: false });
+  currentSocket=socket;
   let pairingRequested = false;
   socket.ev.on('creds.update', saveCreds);
   socket.ev.on('connection.update', ({ connection, qr, lastDisconnect }) => {
@@ -49,41 +97,32 @@ async function start() {
         }
       }
     }
-    if (connection === 'open') console.log('WhatsApp connected. Ask a teammate to send YOJANA START in a direct chat.');
+    if (connection === 'open') { attempts=0; console.log('WhatsApp connected. Ask a teammate to send YOJANA START in a direct chat.'); }
     if (connection === 'close') {
       const code = lastDisconnect?.error?.output?.statusCode;
       console.log(`WhatsApp disconnected (${code ?? 'unknown'}).`);
-      if (code !== DisconnectReason.loggedOut) setTimeout(start, 3000);
+      currentSocket=null;
+      if (!stopped && code !== DisconnectReason.loggedOut) {
+        const delay=Math.min(60000,1000*2**Math.min(attempts++,6));
+        clearTimeout(reconnectTimer);
+        reconnectTimer=setTimeout(()=>start().catch(()=>console.error('Reconnect failed; restart once the network is available.')),delay);
+      } else if(code === DisconnectReason.loggedOut) {console.error('WhatsApp unlinked; operator pairing is required. See docs/WHATSAPP_FLOW.md; do not share session files.');stop();}
     }
   });
   socket.ev.on('messages.upsert', async ({ type, messages }) => {
-    if (type !== 'notify') return;
-    for (const message of messages) {
-      const jid = message.key.remoteJid;
-      const id = message.key.id;
-      if (message.key.fromMe || !jid || jid.endsWith('@g.us') || !id || seen.has(id)) continue;
-      seen.add(id);
-      if (seen.size > 200) seen.clear();
-      const text = demoCommand(messageText(message));
-      if (text === null) continue;
-      try {
-        let reply;
-        if (/^(start|hi|hello)?$/i.test(text)) reply = 'Yojana Sahayak pilot. Ask YOJANA PM-KISAN kitna paisa deta hai? or YOJANA NMMSS scholarship amount. YOJANA MATCH yes no no is a fictional three-check rehearsal. This is not an official eligibility decision.';
-        else if (/^match\b/i.test(text)) reply = answerMatch(text);
-        else if (text) {
-          const result = await answers.chat({ question: text });
-          reply = result.answer_text;
-          if (result.citations?.length) reply += '\n' + result.citations.map(c => `Source: ${c.title}, ${c.locator} — ${c.url}`).join('\n');
-        }
-        else reply = 'This first test accepts text only. Send YOJANA START.';
-        await socket.sendMessage(jid, { text: reply });
-        console.log('Replied to one incoming message.');
-      } catch (error) {
-        console.error('Message failed:', error.message);
-        await socket.sendMessage(jid, { text: 'The local answer service is unavailable. Please try again shortly.' }).catch(() => {});
-      }
-    }
+    if(diagnosticsEnabled)diagnostic(messageBatchDiagnostic(type,messages));
+    const selectedMessages=batchGate.select(type,messages);
+    if(diagnosticsEnabled && type==='append')diagnostic({stage:'batch_gate',recovered:selectedMessages.length});
+    // Admit each event before awaits so a batch of messages cannot bypass the
+    // one-request-per-chat guard and advance several questions unexpectedly.
+    await Promise.all(selectedMessages.map(message=>receive(message).then(status=>{
+      diagnostic(ingressStatusDiagnostic(status));
+      return status;
+    }).catch(()=>{
+      diagnostic(ingressStatusDiagnostic('handler_failed'));
+      console.error('WhatsApp message processing failed.');
+    })));
   });
 }
 
-start().catch(error => { console.error(error.message); process.exitCode = 1; });
+start().catch(() => { console.error('WhatsApp startup failed. Check connection and local pairing state.');stop();process.exitCode=1; });
