@@ -1,5 +1,14 @@
 # Server integration handoff
 
+## PR #12 spoken confirmation integrated — 1 November 2026
+
+- Reviewed Tejas's `a857ad6` (PR #12). It supports spoken yes/confirm/हाँ/1 to use the original pending transcript and no/record again/दोबारा/2 to discard and re-record, plus Hindi/English language names at the language menu. Unclear, uncertain, failed or expired confirmation does not apply an answer. Typed controls and existing voice quotas remain. Each spoken confirmation uses another transcription request; no TTS was added.
+- Found an additional stale-turn defect: START could leave the old transcript pending. An extra regression failed on the submitted PR head. Fixed the captain integration so typed conversation actions clear the pending voice turn, and transcript edits replace the state object so an already-running confirmation cannot apply a changed transcript. New tests cover restart before confirmation and restart/edit during transcription. No API, source, rule, client or Supabase fields changed.
+- Merged the PR with these repairs as `7f1752b` and pushed to `captain/server-integration`. GitHub independently reports PR #12 closed/merged at that commit. This used the existing Git merge/push path; no credential extraction was required. PR #11's restart links, mixed-batch recovery and Pulkit's highlights are preserved.
+- Checks: original PR full suite 168/168; submitted branch build passed. Added regressions then passed 20/20 focused voice tests and 170/170 full Node tests; production build, voice module syntax and whitespace checks passed. Tests use mocked speech and do not establish real handset recognition. A blocked combined diagnostic command was replaced by the standard test runner and a normal regression test.
+- Runtime application remains pending: automatic approval review rejected the guarded stop/start command without a detailed reason. The existing bot process still runs the previous code. Charchit has the exact manual restart steps; do not claim the new spoken-confirmation feature is live until the replacement process connects. No session files or saved data were reset.
+- Required phone check after restart: from a consenting second account, START -> voice Hindi/English -> voice yes/हाँ -> expected role menu; then separately check question -> spoken confirmation -> cited answer, retry and typed fallback. Each note uses the configured provider and current quotas. Until observed, these new live voice behaviours remain unverified.
+
 ## PR #11 restart links applied — 1 November 2026
 
 - Reviewed Tejas's PR #11 at `5a3f001`; no required corrections or outstanding review threads. Merged through GitHub into `captain/server-integration` as `099ffdc`. Main and unrelated branches were not merged. The GitHub connector's merge write returned 403; the same authorized merge was completed with the existing Git credential through the repository API, pinned to the tested head and base, without printing or saving credentials.
