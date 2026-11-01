@@ -19,6 +19,7 @@ import { parseTestAllowlist } from './tester-allowlist.mjs';
 import { installSafeSignalLogging } from './safe-signal-logging.mjs';
 import { startSourceUpdates } from './source-update-runner.mjs';
 import { messageBatchDiagnostic, ingressStatusDiagnostic } from './whatsapp-content.mjs';
+import { createWhatsAppBatchGate } from './whatsapp-batches.mjs';
 
 installSafeSignalLogging(console);
 const diagnosticsEnabled=process.env.YOJANA_DIAGNOSTICS==='1';
@@ -30,6 +31,7 @@ const store = openLocalStore(resolve(process.env.YOJANA_STATE_DIR || '.runtime/w
 const answers = createAnswerService();
 const conversation = createWhatsAppConversation({ answers, store, multiScheme: process.env.YOJANA_NATURAL_FLOW !== '0' && process.env.YOJANA_MULTI_SCHEME !== '0' });
 const voice = createVoiceFlow({ answers, transcribe:transcribeVoice, fallback:conversation.handle, answerQuestion:conversation.answerQuestion, profileStatement:conversation.handleProfileStatement, isProfileStatement:conversation.isProfileStatement, isQuestionnaireReply:conversation.acceptsBareQuestionnaireReply, selectedLanguage:conversation.selectedLanguage, choosingLanguage:conversation.choosingLanguage, diagnostic:event=>console.log('Voice status: '+event) });
+const batchGate = createWhatsAppBatchGate({expectsReply:chat=>conversation.hasPendingPrompt(chat)||voice.hasPendingPrompt(chat)});
 const pendingVoice = new Map();
 let currentSocket, reconnectTimer, stopped=false, attempts=0;
 const send=async(chat,text)=>{
@@ -42,7 +44,10 @@ const deliver=createDelivery({store,handle:async (chat,text)=>{
     return audio ? (await voice.handleAudio(chat,audio,conversation.hasActiveConversation(chat)) || 'Send YOJANA START to begin.') : 'Voice message unavailable. Please try again.';
   }
   return voice.handle(chat,text);
-},send});
+},send:async(chat,text)=>{
+  await send(chat,text);
+  batchGate.markReplySent(chat);
+}});
 const receive=createWhatsAppIngress({conversation,voice,store,deliver,send,pendingVoice,
   guard:createWhatsAppGuard({testNumbers:parseTestAllowlist(process.env.YOJANA_TEST_ALLOWLIST)}),
   maxVoiceSeconds:process.env.YOJANA_STT_PROVIDER==='sarvam'?30:60,
@@ -105,10 +110,11 @@ async function start() {
   });
   socket.ev.on('messages.upsert', async ({ type, messages }) => {
     if(diagnosticsEnabled)diagnostic(messageBatchDiagnostic(type,messages));
-    if (type !== 'notify') return;
+    const selectedMessages=batchGate.select(type,messages);
+    if(diagnosticsEnabled && type==='append')diagnostic({stage:'batch_gate',recovered:selectedMessages.length});
     // Admit each event before awaits so a batch of messages cannot bypass the
     // one-request-per-chat guard and advance several questions unexpectedly.
-    await Promise.all(messages.map(message=>receive(message).then(status=>{
+    await Promise.all(selectedMessages.map(message=>receive(message).then(status=>{
       diagnostic(ingressStatusDiagnostic(status));
       return status;
     }).catch(()=>{

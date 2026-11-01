@@ -12,6 +12,7 @@ export function createVoiceFlow({ answers, transcribe, fallback, answerQuestion=
   const prompt=`Send one short Hindi or English voice question. Confirm the transcription before I answer. ${processing} Do not send Aadhaar, bank details or other private information.\nहिंदी या अंग्रेज़ी में छोटा आवाज़ वाला सवाल भेजें। जवाब से पहले लिखी हुई बात की पुष्टि करें। आधार या बैंक जानकारी न भेजें।`;
   return {
     acceptsAudio(id){return current(id)?.phase==='audio';},
+    hasPendingPrompt(id){return ['audio','confirm'].includes(current(id)?.phase);},
     acceptsPendingChoice(id,text){return current(id)?.phase==='confirm' && /^(?:1|2)$/u.test(String(text).trim());},
     async handleAudio(id, audio, activeConversation=false){
       if(!activeConversation && !this.acceptsAudio(id))return null;

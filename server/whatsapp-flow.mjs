@@ -598,5 +598,12 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
     return ['role','questions','natural_confirm','income_period','comparison_income','answer_confirm'].includes(phase) && Boolean(String(text ?? '').trim());
   }
 
-  return { handle, handleProfileStatement, isProfileStatement: text=>naturalFlow && isProfileStatement(text), answerQuestion, acceptsBareQuestionnaireReply, choosingLanguage: chatId => questionnaireByChat.get(chatId)?.phase === 'language', selectedLanguage: chatId => ['role','questions','natural_confirm','income_period','comparison_income','answer_confirm','comparison'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
+  function hasPendingPrompt(chatId) {
+    if (awaitingCsc.get(chatId) > now() || awaitingCscOffer.get(chatId) > now()) return true;
+    if (comparison.pending(chatId)) return true;
+    return ['language','role','questions','natural_confirm','income_period','comparison_income','answer_confirm']
+      .includes(questionnaireByChat.get(chatId)?.phase);
+  }
+
+  return { handle, handleProfileStatement, isProfileStatement: text=>naturalFlow && isProfileStatement(text), answerQuestion, acceptsBareQuestionnaireReply, hasPendingPrompt, choosingLanguage: chatId => questionnaireByChat.get(chatId)?.phase === 'language', selectedLanguage: chatId => ['role','questions','natural_confirm','income_period','comparison_income','answer_confirm','comparison'].includes(questionnaireByChat.get(chatId)?.phase) ? (languageByChat.get(chatId) || null) : null, hasActiveConversation: chatId => touched.has(chatId) || languageByChat.has(chatId) || questionnaireByChat.has(chatId) };
 }
