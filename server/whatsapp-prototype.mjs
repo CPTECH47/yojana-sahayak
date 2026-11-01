@@ -20,6 +20,7 @@ import { installSafeSignalLogging } from './safe-signal-logging.mjs';
 import { startSourceUpdates } from './source-update-runner.mjs';
 import { messageBatchDiagnostic, ingressStatusDiagnostic } from './whatsapp-content.mjs';
 import { createWhatsAppBatchGate } from './whatsapp-batches.mjs';
+import { withRestartLink } from './whatsapp-restart.mjs';
 
 installSafeSignalLogging(console);
 const diagnosticsEnabled=process.env.YOJANA_DIAGNOSTICS==='1';
@@ -36,7 +37,7 @@ const pendingVoice = new Map();
 let currentSocket, reconnectTimer, stopped=false, attempts=0;
 const send=async(chat,text)=>{
   if(!currentSocket || stopped)throw Error('WhatsApp unavailable');
-  await currentSocket.sendMessage(chat,{text});
+  await currentSocket.sendMessage(chat,{text:withRestartLink(text)});
 };
 const deliver=createDelivery({store,handle:async (chat,text)=>{
   if(text.startsWith('__VOICE_AUDIO__:')){
