@@ -59,6 +59,19 @@ async function startHindiFarmer(f){
   assert.equal(f.conversation.selectedLanguage(chat),'hi');
 }
 
+test('standalone comparison role prompt also accepts a fresh mixed-batch choice',async()=>{
+  const f=setup();
+  assert.deepEqual((await f.next('compare-start','YOJANA SCHEMES')).statuses,['sent']);
+  assert.equal(f.conversation.hasPendingPrompt(chat),true);
+  f.advance(2000);
+  const role=f.message('compare-role','1');
+  const result=await f.batch('append',[f.message('own-role-menu','Choose role',{fromMe:true}),role]);
+  assert.deepEqual(result.selected,[role]);
+  assert.deepEqual(result.statuses,['sent']);
+  assert.match(f.replies.at(-1).text,/PM-KISAN[\s\S]*cultivable land/u);
+  assert.deepEqual(f.calls,{model:0,chat:0,speech:0,profile:0,interpret:0,download:0});
+});
+
 test('Hindi NO in a mixed append batch reaches the next scheme once through the real delivery pipeline',async()=>{
   const f=setup();
   await startHindiFarmer(f);

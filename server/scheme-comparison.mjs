@@ -191,6 +191,8 @@ export function createSchemeComparison({ answers, now = Date.now, onResults = ()
     }
     return next(state, true);
   }
-  return { handle, clear, snapshot, restore, seedConfirmed, pending: id=>sessions.get(id)?.pending||null, active: id => sessions.has(id), scheme: id => sessions.get(id)?.pending?.scheme_id,
+  return { handle, clear, snapshot, restore, seedConfirmed, pending: id=>sessions.get(id)?.pending||null,
+    hasPendingPrompt: id=>{const state=sessions.get(id);return Boolean(state && (state.phase==='role'||state.pending));},
+    active: id => sessions.has(id), scheme: id => sessions.get(id)?.pending?.scheme_id,
     prompt: id => { const state = sessions.get(id); return state?.pending ? question(state, state.pending) : ''; } };
 }

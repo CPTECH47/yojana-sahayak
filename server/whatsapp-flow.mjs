@@ -600,7 +600,7 @@ export function createWhatsAppConversation({ answers, passages, store = memorySt
 
   function hasPendingPrompt(chatId) {
     if (awaitingCsc.get(chatId) > now() || awaitingCscOffer.get(chatId) > now()) return true;
-    if (comparison.pending(chatId)) return true;
+    if (comparison.hasPendingPrompt(chatId)) return true;
     return ['language','role','questions','natural_confirm','income_period','comparison_income','answer_confirm']
       .includes(questionnaireByChat.get(chatId)?.phase);
   }
