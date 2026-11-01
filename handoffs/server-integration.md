@@ -1,5 +1,13 @@
 # Server integration handoff
 
+## Missing START reply and safe transport diagnostics — 1 November 2026
+
+- The existing bot process owned the session lock, so a second manual launch correctly failed. `YOJANA START` belongs in a second account's direct WhatsApp chat, not in PowerShell. Verified that the paired account was the intended bot without printing its full identifier or authentication data. The earlier process had no completed reply logs and five decryption-error strings at startup; those alone do not establish the exact cause of the missed command.
+- Restarted only the verified bot process with its existing auth/state; no session reset or saved-data deletion. With optional diagnostics enabled, a new incoming `notify` batch contained START and the ingress/delivery status was `sent`. Charchit independently confirmed the greeting appeared on the consenting second account. This verifies the current START greeting, not all voice/profile/CSC paths.
+- Added `YOJANA_DIAGNOSTICS=1` support for fixed-category aggregate batch counts and ingress outcomes. It excludes bodies, transcripts, phone numbers, JIDs, event IDs, stub parameters and error objects. Default remains off. Offline/history `append` batches remain ignored to avoid replaying questionnaire actions. Documented shell/chat separation, existing-process locks and fresh-message verification.
+- Files: `server/whatsapp-content.mjs`, `server/whatsapp-content.test.mjs`, `server/whatsapp-prototype.mjs`, `.env.example`, `docs/WHATSAPP_FLOW.md`, this handoff. No HTTP API fields or conversation contracts changed. Runtime logs remain under ignored `.runtime/`; no credentials or real messages are committed.
+- Checks: 11/11 focused content/ingress tests passed; full `npm.cmd test` passed 141/141 using mocked/offline model paths; `npm.cmd run build`, entry-point syntax and `git diff --check` passed. Privacy tests assert synthetic message text and identifiers cannot appear in diagnostics. Current paired-phone START reply was observed as described above. The original missed-message root cause remains uncertain; do not claim the diagnostic changes repair every decryption/session failure.
+
 ## Judge-facing README — 1 November 2026
 
 - Rewrote `README.md` with the LinkPulse reference's project-first structure: problem, solution, demo, features, scheme coverage, RAG diagram, stack, setup, API, verification and limitations. Removed stale three-scheme/ten-document statements and outdated repair-branch instructions. Current voice input, transcript confirmation, CSC consent/search, natural descriptions, source monitoring and spam controls are described; same-language TTS remains explicitly planned.

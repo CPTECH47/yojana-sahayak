@@ -18,8 +18,11 @@ import { createWhatsAppGuard } from './whatsapp-guard.mjs';
 import { parseTestAllowlist } from './tester-allowlist.mjs';
 import { installSafeSignalLogging } from './safe-signal-logging.mjs';
 import { startSourceUpdates } from './source-update-runner.mjs';
+import { messageBatchDiagnostic, ingressStatusDiagnostic } from './whatsapp-content.mjs';
 
 installSafeSignalLogging(console);
+const diagnosticsEnabled=process.env.YOJANA_DIAGNOSTICS==='1';
+const diagnostic=value=>{if(diagnosticsEnabled)console.log('WhatsApp diagnostic: '+JSON.stringify(value));};
 
 const authDir = process.env.YOJANA_AUTH_DIR ? resolve(process.env.YOJANA_AUTH_DIR) : fileURLToPath(new URL('./.baileys-auth/', import.meta.url));
 const authLock = openLocalStore(join(authDir,'.owner'));
@@ -101,10 +104,17 @@ async function start() {
     }
   });
   socket.ev.on('messages.upsert', async ({ type, messages }) => {
+    if(diagnosticsEnabled)diagnostic(messageBatchDiagnostic(type,messages));
     if (type !== 'notify') return;
     // Admit each event before awaits so a batch of messages cannot bypass the
     // one-request-per-chat guard and advance several questions unexpectedly.
-    await Promise.all(messages.map(message=>receive(message).catch(()=>console.error('WhatsApp message processing failed.'))));
+    await Promise.all(messages.map(message=>receive(message).then(status=>{
+      diagnostic(ingressStatusDiagnostic(status));
+      return status;
+    }).catch(()=>{
+      diagnostic(ingressStatusDiagnostic('handler_failed'));
+      console.error('WhatsApp message processing failed.');
+    })));
   });
 }
 

@@ -44,6 +44,14 @@ Natural profile descriptions and descriptive answers to a condition use local Qw
 
 Audio replies, current student eligibility matching, artisan eligibility matching and state-specific scheme matching are not running. A source scan runs when the WhatsApp process starts and every 12 hours while it remains running. It checks the approved URLs and selected official discovery pages, saving new or changed documents as local candidates. Coverage is limited to those seed pages and linked documents; it is not a complete feed of every government scheme. The scan never auto-approves eligibility rules. Run `npm.cmd run sources:update` for a one-time scan; install `requirements-ingest.txt` first. Set `YOJANA_SOURCE_UPDATES=0` to turn the scheduled scan off.
 
+## Startup and missing-reply checks
+
+Run `node server/whatsapp-prototype.mjs` in PowerShell from the project directory. Copy only the command, without the shell's `PS C:\...>` prompt. Send `YOJANA START` in a direct **WhatsApp chat from a different account to the linked bot account**, never in PowerShell or the bot's Message yourself chat. The bot deliberately ignores its own messages and groups.
+
+`Another bot process owns this state` means a process already holds the session/state lock. Do not start another copy, delete the lock, or stop every Node process. Inspect the existing bot's status first. `WhatsApp connected` confirms the connection, not successful decryption or a delivered reply. Send one fresh command after connection; historical/offline `append` batches are intentionally not replayed through the questionnaire.
+
+For diagnosis only, set `$env:YOJANA_DIAGNOSTICS='1'` before starting the single bot process. It logs aggregate batch counts and processing status without message bodies, phone numbers, JIDs, message IDs or authentication material. A ciphertext count indicates a message could not be decrypted, while a decoded START with a non-sent outcome needs handler/delivery investigation. Leave diagnostics off during routine use; never share raw session files or unreviewed library logs.
+
 ## Re-linking after a 401
 
 A 401 logged-out response means the saved WhatsApp session was rejected; the bot stops reconnecting. Stop the bot, and with the account owner's consent move `server/.baileys-auth` to a secure location outside the repository as a backup. Do not share or commit it. Restart the bot to create a fresh pairing request, then link the intended WhatsApp account via Linked devices. A successful connection must be verified on the phone; do not assume re-linking resolves every 401. For phone-number pairing, start PowerShell with `$env:YOJANA_PAIRING_MODE='code'` before running `node server/whatsapp-prototype.mjs` and follow the prompts.
